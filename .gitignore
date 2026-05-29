@@ -24,9 +24,9 @@ data/*.tmp
 *.faiss
 chroma/
 
-# Eval run outputs
-eval/reports/*.json
-!eval/reports/.gitkeep
+# Eval run outputs (generated artifacts; champion.json is the canonical record)
+reports/*.json
+!reports/.gitkeep
 
 # OS / editor
 .DS_Store

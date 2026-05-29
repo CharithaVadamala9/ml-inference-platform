@@ -18,8 +18,11 @@ class Settings(BaseSettings):
     # ---- LLM judge / generation provider ----
     openai_api_key: str | None = None
     anthropic_api_key: str | None = None
-    judge_provider: Literal["openai", "anthropic"] = "openai"
-    judge_model: str = "gpt-4o-mini"
+    judge_provider: Literal["openai", "anthropic"] = "anthropic"
+    judge_model: str = "claude-haiku-4-5-20251001"
+
+    # Embedding model used by the retriever and by RAGAS semantic scoring.
+    embed_model: str = "all-MiniLM-L6-v2"
 
     # ---- Serving backend ----
     serving_backend: Literal["ollama", "vllm", "openai"] = "ollama"

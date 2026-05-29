@@ -12,6 +12,7 @@ from rich.table import Table
 
 from mlip import __version__
 from mlip.config import settings
+from mlip.eval.cli import eval_app
 from mlip.rag.cli import rag_app
 
 app = typer.Typer(
@@ -20,6 +21,7 @@ app = typer.Typer(
     no_args_is_help=True,
 )
 app.add_typer(rag_app, name="rag")
+app.add_typer(eval_app, name="eval")
 console = Console()
 
 

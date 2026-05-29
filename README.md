@@ -72,6 +72,9 @@ uv run python -m mlip info
 # 4. Try the RAG system under test (needs Ollama running locally)
 uv run python -m mlip rag ask "Why does dropout improve generalization?"
 uv run python -m mlip rag retrieve "bias variance tradeoff"
+
+# 5. Run the eval pipeline (needs ANTHROPIC_API_KEY in .env)
+uv run python -m mlip eval run --name baseline --prompt-version v2
 ```
 
 > The CLI is invoked as `python -m mlip` during development. (An installed
@@ -99,7 +102,7 @@ This project is built in vertical slices — each one is independently runnable.
 
 - [x] **Slice 0** — Scaffold: structure, tooling, MLflow via Docker
 - [x] **Slice 1** — RAG system under test + eval dataset
-- [ ] **Slice 2** — LangGraph eval pipeline (RAGAS + judge) → MLflow
+- [x] **Slice 2** — LangGraph eval pipeline (RAGAS + judge) → MLflow
 - [ ] **Slice 3** — A/B harness + champion tracking
 - [ ] **Slice 4** — GitHub Actions quality gate
 - [ ] **Slice 5** — Serving + Prometheus/Grafana observability

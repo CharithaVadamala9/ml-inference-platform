@@ -1,0 +1,10 @@
+global:
+  scrape_interval: 5s
+  evaluation_interval: 5s
+
+scrape_configs:
+  # The serving gateway runs on the host (uv run python -m mlip serve);
+  # host.docker.internal lets the containerized Prometheus reach it.
+  - job_name: mlip-serving
+    static_configs:
+      - targets: ["host.docker.internal:8000"]

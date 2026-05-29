@@ -31,6 +31,19 @@ def main() -> None:
 
 
 @app.command()
+def serve(
+    host: str = "127.0.0.1",
+    port: int = 8000,
+    reload: bool = False,
+) -> None:
+    """Run the FastAPI serving gateway (with Prometheus metrics at /metrics)."""
+    import uvicorn
+
+    console.print(f"[bold]Serving[/bold] on http://{host}:{port}  (metrics: /metrics)")
+    uvicorn.run("mlip.serving.app:create_app", host=host, port=port, factory=True, reload=reload)
+
+
+@app.command()
 def info() -> None:
     """Show the current configuration the platform will run with."""
     table = Table(title=f"ML Inference Platform v{__version__}")

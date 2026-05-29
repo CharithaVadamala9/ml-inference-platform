@@ -75,6 +75,10 @@ uv run python -m mlip rag retrieve "bias variance tradeoff"
 
 # 5. Run the eval pipeline (needs ANTHROPIC_API_KEY in .env)
 uv run python -m mlip eval run --name baseline --prompt-version v2
+
+# 6. A/B two variants and promote the winner as the "champion"
+uv run python -m mlip eval ab --a-prompt v1 --b-prompt v2 --promote-winner
+uv run python -m mlip eval champion        # show the current quality bar
 ```
 
 > The CLI is invoked as `python -m mlip` during development. (An installed
@@ -103,7 +107,7 @@ This project is built in vertical slices — each one is independently runnable.
 - [x] **Slice 0** — Scaffold: structure, tooling, MLflow via Docker
 - [x] **Slice 1** — RAG system under test + eval dataset
 - [x] **Slice 2** — LangGraph eval pipeline (RAGAS + judge) → MLflow
-- [ ] **Slice 3** — A/B harness + champion tracking
+- [x] **Slice 3** — A/B harness + champion tracking
 - [ ] **Slice 4** — GitHub Actions quality gate
 - [ ] **Slice 5** — Serving + Prometheus/Grafana observability
 - [ ] **Slice 6** — Polish: diagrams, screenshots, real vLLM benchmark

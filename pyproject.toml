@@ -16,6 +16,10 @@ dependencies = [
     "python-dotenv>=1.0",
     "typer>=0.12",
     "rich>=13.7",
+    "sentence-transformers>=5.5.1",
+    "numpy>=2.4.6",
+    "anthropic>=0.105.2",
+    "httpx>=0.28.1",
 ]
 
 [project.scripts]

@@ -12,12 +12,14 @@ from rich.table import Table
 
 from mlip import __version__
 from mlip.config import settings
+from mlip.rag.cli import rag_app
 
 app = typer.Typer(
     name="mlip",
     help="ML Inference Platform — eval pipeline + serving control plane.",
     no_args_is_help=True,
 )
+app.add_typer(rag_app, name="rag")
 console = Console()
 
 

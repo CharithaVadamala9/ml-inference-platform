@@ -54,6 +54,11 @@ flowchart TB
 
 ## Quickstart
 
+**Prerequisites:** [`uv`](https://docs.astral.sh/uv/), Docker (for MLflow), and
+[Ollama](https://ollama.com) with a small model pulled (`ollama pull llama3.2:1b`)
+for local generation. Copy `.env.example` to `.env` and add your `ANTHROPIC_API_KEY`
+(used by the eval judge).
+
 ```bash
 # 1. Install (uv manages Python 3.11 + deps; no system changes)
 make install
@@ -62,8 +67,15 @@ make install
 make up          # -> MLflow UI at http://localhost:5000
 
 # 3. Sanity check the config
-uv run mlip info
+uv run python -m mlip info
+
+# 4. Try the RAG system under test (needs Ollama running locally)
+uv run python -m mlip rag ask "Why does dropout improve generalization?"
+uv run python -m mlip rag retrieve "bias variance tradeoff"
 ```
+
+> The CLI is invoked as `python -m mlip` during development. (An installed
+> `mlip` console script also exists for wheel installs.)
 
 ## Repository layout
 
@@ -86,7 +98,7 @@ uv run mlip info
 This project is built in vertical slices — each one is independently runnable.
 
 - [x] **Slice 0** — Scaffold: structure, tooling, MLflow via Docker
-- [ ] **Slice 1** — RAG system under test + eval dataset
+- [x] **Slice 1** — RAG system under test + eval dataset
 - [ ] **Slice 2** — LangGraph eval pipeline (RAGAS + judge) → MLflow
 - [ ] **Slice 3** — A/B harness + champion tracking
 - [ ] **Slice 4** — GitHub Actions quality gate

@@ -27,5 +27,14 @@ down:  ## Stop local infra
 mlflow:  ## Open the MLflow UI
 	open http://localhost:5001
 
+serve:  ## Run the FastAPI serving gateway on :8000
+	uv run python -m mlip serve
+
+monitoring:  ## Start Prometheus + Grafana (Grafana at :3000)
+	docker compose --profile monitoring up -d
+
+grafana:  ## Open the Grafana serving dashboard
+	open http://localhost:3000/d/mlip-serving
+
 clean:  ## Remove caches and local run artifacts
 	rm -rf .ruff_cache .mypy_cache .pytest_cache eval/reports/*.json

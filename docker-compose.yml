@@ -1,7 +1,8 @@
 # Local infrastructure for the platform.
-# Slice 0 brings up MLflow (the model/experiment registry).
-# The serving + monitoring stack (FastAPI, Prometheus, Grafana) is added in a
-# later slice under the "serving" profile so `docker compose up` stays lean.
+# Default `docker compose up` brings up MLflow (the model/experiment registry).
+# The observability stack (Prometheus + Grafana) is under the "monitoring"
+# profile so it only starts when asked: `docker compose --profile monitoring up`.
+# The serving gateway itself runs on the host: `uv run python -m mlip serve`.
 services:
   mlflow:
     image: ghcr.io/mlflow/mlflow:v2.18.0
@@ -23,6 +24,34 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    container_name: mlip-prometheus
+    profiles: ["monitoring"]
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  grafana:
+    image: grafana/grafana:11.3.0
+    container_name: mlip-grafana
+    profiles: ["monitoring"]
+    ports:
+      - "3000:3000"
+    environment:
+      # Anonymous admin access so dashboards open without a login (demo-friendly).
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: "Admin"
+      GF_AUTH_DISABLE_LOGIN_FORM: "true"
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - prometheus
 
 volumes:
   mlflow-data:

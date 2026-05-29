@@ -7,6 +7,9 @@ open-weight models, so swapping Ollama -> vLLM later is a config change.
 
 from __future__ import annotations
 
+import json
+from collections.abc import Iterator
+
 import httpx
 
 from mlip.config import settings
@@ -39,3 +42,30 @@ class OllamaBackend(ChatBackend):
         )
         resp.raise_for_status()
         return resp.json()["message"]["content"].strip()
+
+    def stream_chat(
+        self,
+        messages: list[Message],
+        *,
+        temperature: float = 0.0,
+        max_tokens: int = 512,
+    ) -> Iterator[str]:
+        with httpx.stream(
+            "POST",
+            f"{self.base_url}/api/chat",
+            json={
+                "model": self.model,
+                "messages": messages,
+                "stream": True,
+                "options": {"temperature": temperature, "num_predict": max_tokens},
+            },
+            timeout=120.0,
+        ) as resp:
+            resp.raise_for_status()
+            for line in resp.iter_lines():
+                if not line:
+                    continue
+                chunk = json.loads(line)
+                piece = chunk.get("message", {}).get("content", "")
+                if piece:
+                    yield piece

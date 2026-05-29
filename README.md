@@ -85,6 +85,26 @@ uv run python -m mlip eval champion        # show the current quality bar
 uv run python -m mlip eval gate --report reports/<some-run>.json
 ```
 
+### Serving + observability
+
+A FastAPI gateway fronts the pluggable backend, streams tokens, and serves an
+in-process prompt cache. It exposes Prometheus metrics that a provisioned
+Grafana dashboard renders.
+
+```bash
+make serve            # FastAPI gateway on :8000 (talks to local Ollama)
+make monitoring       # Prometheus + Grafana (docker, monitoring profile)
+make grafana          # open the "MLIP — Serving" dashboard at :3000
+
+# generate some traffic
+curl -s localhost:8000/generate -H 'content-type: application/json' \
+  -d '{"prompt":"What is overfitting?"}'
+```
+
+Tracked signals: **QPS**, **TTFT** (p50/p95), end-to-end **latency** (p50/p95),
+**cache hit rate**, and output tokens/sec. The serving engine is a swappable
+backend (`ollama` locally, `vllm` on GPU, `openai`) selected by config.
+
 ### The quality gate
 
 On every pull request, the [`Quality Gate`](.github/workflows/quality-gate.yml)
@@ -123,7 +143,7 @@ This project is built in vertical slices — each one is independently runnable.
 - [x] **Slice 2** — LangGraph eval pipeline (RAGAS + judge) → MLflow
 - [x] **Slice 3** — A/B harness + champion tracking
 - [x] **Slice 4** — GitHub Actions quality gate
-- [ ] **Slice 5** — Serving + Prometheus/Grafana observability
+- [x] **Slice 5** — Serving + Prometheus/Grafana observability
 - [ ] **Slice 6** — Polish: diagrams, screenshots, real vLLM benchmark
 
 ## License

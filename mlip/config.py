@@ -32,7 +32,7 @@ class Settings(BaseSettings):
     vllm_model: str = ""
 
     # ---- MLflow ----
-    mlflow_tracking_uri: str = "http://localhost:5000"
+    mlflow_tracking_uri: str = "http://localhost:5001"
 
 
 @lru_cache

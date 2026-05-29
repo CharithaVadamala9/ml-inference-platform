@@ -64,7 +64,7 @@ for local generation. Copy `.env.example` to `.env` and add your `ANTHROPIC_API_
 make install
 
 # 2. Bring up MLflow
-make up          # -> MLflow UI at http://localhost:5000
+make up          # -> MLflow UI at http://localhost:5001
 
 # 3. Sanity check the config
 uv run python -m mlip info

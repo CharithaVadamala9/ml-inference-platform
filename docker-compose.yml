@@ -6,8 +6,10 @@ services:
   mlflow:
     image: ghcr.io/mlflow/mlflow:v2.18.0
     container_name: mlip-mlflow
+    # Host port 5001 -> container 5000. macOS AirPlay Receiver squats on 5000,
+    # so we publish on 5001 to avoid the conflict.
     ports:
-      - "5000:5000"
+      - "5001:5000"
     volumes:
       - mlflow-data:/mlflow
     command: >

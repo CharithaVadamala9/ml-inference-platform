@@ -25,7 +25,7 @@ down:  ## Stop local infra
 	docker compose down
 
 mlflow:  ## Open the MLflow UI
-	open http://localhost:5000
+	open http://localhost:5001
 
 clean:  ## Remove caches and local run artifacts
 	rm -rf .ruff_cache .mypy_cache .pytest_cache eval/reports/*.json

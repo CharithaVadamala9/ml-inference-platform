@@ -1,0 +1,56 @@
+[project]
+name = "mlip"
+version = "0.1.0"
+description = "End-to-end ML inference platform: an agentic LLM eval pipeline with a CI quality gate, plus a pluggable serving layer with full observability."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Charitha Vadamala" }]
+keywords = ["llm", "mlops", "llmops", "evaluation", "ragas", "langgraph", "vllm", "mlflow"]
+
+# Core dependencies (always installed). Heavier ML deps are added per build-slice
+# so each part of the platform stays installable on its own.
+dependencies = [
+    "pydantic>=2.7",
+    "pydantic-settings>=2.3",
+    "python-dotenv>=1.0",
+    "typer>=0.12",
+    "rich>=13.7",
+]
+
+[project.scripts]
+mlip = "mlip.cli:app"
+
+[dependency-groups]
+dev = [
+    "ruff>=0.6",
+    "pytest>=8.2",
+    "pytest-asyncio>=0.23",
+    "mypy>=1.10",
+]
+
+[build-system]
+requires = ["uv_build>=0.11,<0.12"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "mlip"
+module-root = ""
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+# A sensible, modern default: pyflakes, pycodestyle, isort, bugbear, pyupgrade, simplify.
+select = ["E", "F", "I", "B", "UP", "SIM", "C4"]
+ignore = ["E501"]  # line length handled by formatter
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+check_untyped_defs = true

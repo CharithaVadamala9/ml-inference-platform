@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+
+# Environment / secrets
+.env
+.env.local
+*.key
+
+# MLflow local store
+mlflow.db
+mlruns/
+mlartifacts/
+
+# Data artifacts (keep the curated eval set, ignore generated/large files)
+data/cache/
+data/*.tmp
+*.faiss
+chroma/
+
+# Eval run outputs
+eval/reports/*.json
+!eval/reports/.gitkeep
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/

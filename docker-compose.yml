@@ -1,0 +1,26 @@
+# Local infrastructure for the platform.
+# Slice 0 brings up MLflow (the model/experiment registry).
+# The serving + monitoring stack (FastAPI, Prometheus, Grafana) is added in a
+# later slice under the "serving" profile so `docker compose up` stays lean.
+services:
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v2.18.0
+    container_name: mlip-mlflow
+    ports:
+      - "5000:5000"
+    volumes:
+      - mlflow-data:/mlflow
+    command: >
+      mlflow server
+      --host 0.0.0.0
+      --port 5000
+      --backend-store-uri sqlite:////mlflow/mlflow.db
+      --artifacts-destination /mlflow/artifacts
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  mlflow-data:

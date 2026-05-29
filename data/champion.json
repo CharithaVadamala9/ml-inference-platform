@@ -1,0 +1,19 @@
+{
+  "config": {
+    "name": "A-v1-k3",
+    "prompt_version": "v1",
+    "top_k": 3,
+    "backend": null,
+    "model": null,
+    "temperature": 0.0,
+    "max_tokens": 256
+  },
+  "scorecard": {
+    "faithfulness": 0.7566798941798942,
+    "answer_correctness": 0.7128934866225247,
+    "judge_helpfulness": 0.9166666666666666,
+    "n_examples": 12.0
+  },
+  "mlflow_run_id": "9ea4f8725ef44aa5a964381465da5baf",
+  "promoted_at": "2026-05-29T20:16:38.751985+00:00"
+}

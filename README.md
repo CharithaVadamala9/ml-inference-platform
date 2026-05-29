@@ -79,7 +79,21 @@ uv run python -m mlip eval run --name baseline --prompt-version v2
 # 6. A/B two variants and promote the winner as the "champion"
 uv run python -m mlip eval ab --a-prompt v1 --b-prompt v2 --promote-winner
 uv run python -m mlip eval champion        # show the current quality bar
+
+# 7. The quality gate (what CI runs): fails with exit 1 if a candidate
+#    regresses below the champion beyond tolerance
+uv run python -m mlip eval gate --report reports/<some-run>.json
 ```
+
+### The quality gate
+
+On every pull request, the [`Quality Gate`](.github/workflows/quality-gate.yml)
+workflow re-evaluates the champion config under the PR's code and **fails the
+check (exit 1) if `faithfulness` or `answer_correctness` regresses** beyond
+tolerance — blocking the merge. It needs an `ANTHROPIC_API_KEY` repository
+secret (RAG generation runs on a local Ollama model in the runner); without the
+secret the live gate skips gracefully. To make a failing gate actually block a
+merge, enable branch protection on `main` and mark the check **Required**.
 
 > The CLI is invoked as `python -m mlip` during development. (An installed
 > `mlip` console script also exists for wheel installs.)
@@ -108,7 +122,7 @@ This project is built in vertical slices — each one is independently runnable.
 - [x] **Slice 1** — RAG system under test + eval dataset
 - [x] **Slice 2** — LangGraph eval pipeline (RAGAS + judge) → MLflow
 - [x] **Slice 3** — A/B harness + champion tracking
-- [ ] **Slice 4** — GitHub Actions quality gate
+- [x] **Slice 4** — GitHub Actions quality gate
 - [ ] **Slice 5** — Serving + Prometheus/Grafana observability
 - [ ] **Slice 6** — Polish: diagrams, screenshots, real vLLM benchmark
 

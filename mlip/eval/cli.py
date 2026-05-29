@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 import typer
 from rich.console import Console
 from rich.table import Table
 
 from mlip.eval.ab import run_ab
 from mlip.eval.champion import load_champion, promote
+from mlip.eval.gate import DEFAULT_TOLERANCE, evaluate_gate
 from mlip.eval.runner import run_eval
 from mlip.rag.pipeline import PROMPT_VARIANTS, RagConfig
 
@@ -110,3 +114,43 @@ def champion() -> None:
     console.print(
         f"[dim]Promoted at {record['promoted_at']} (run {record.get('mlflow_run_id')})[/dim]"
     )
+
+
+@eval_app.command()
+def gate(
+    report: Path | None = typer.Option(
+        None, help="Gate an existing report's scorecard instead of running a fresh eval."
+    ),
+    tolerance: float = typer.Option(DEFAULT_TOLERANCE, help="Allowed regression per metric."),
+    no_mlflow: bool = typer.Option(True, help="Skip MLflow logging (default in CI)."),
+) -> None:
+    """Fail (exit 1) if the candidate regresses below the champion. Used by CI."""
+    champion = load_champion()
+    if champion is None:
+        console.print("[red]No champion to gate against. Run `mlip eval promote` first.[/red]")
+        raise typer.Exit(code=1)
+
+    if report is not None:
+        candidate = json.loads(report.read_text(encoding="utf-8"))["scorecard"]
+        console.print(f"[bold]Gating report[/bold] {report}")
+    else:
+        # Evaluate the champion's own config with the current code/data/prompts.
+        config = RagConfig(**champion["config"])
+        console.print("[bold]Gating candidate[/bold] (champion config under current code)")
+        candidate = run_eval(config, log_to_mlflow=not no_mlflow).scorecard
+
+    result = evaluate_gate(candidate, champion, tolerance=tolerance)
+
+    table = Table(title=f"Quality gate (tolerance {tolerance})")
+    for col in ("Metric", "Candidate", "Champion", "Floor", "Status"):
+        table.add_column(col, style="cyan" if col == "Metric" else "white")
+    for c in result.checks:
+        status = "[green]PASS[/green]" if c.passed else "[red]FAIL[/red]"
+        table.add_row(c.metric, f"{c.candidate:.3f}", f"{c.champion:.3f}", f"{c.floor:.3f}", status)
+    console.print(table)
+
+    if not result.passed:
+        regressed = ", ".join(c.metric for c in result.failures)
+        console.print(f"[red bold]❌ Quality gate FAILED — regressed: {regressed}[/red bold]")
+        raise typer.Exit(code=1)
+    console.print("[green bold]✅ Quality gate PASSED[/green bold]")

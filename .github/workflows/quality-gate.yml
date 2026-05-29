@@ -1,0 +1,55 @@
+name: Quality Gate
+
+# Blocks a PR if the champion config regresses on key quality metrics.
+# Requires an ANTHROPIC_API_KEY repo secret (for RAGAS + the LLM judge); the
+# RAG generator runs on a local Ollama model installed in the runner.
+# If the secret is absent (e.g. on forks), the live gate is skipped gracefully.
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  quality-gate:
+    name: Eval quality gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Detect API key
+        id: secret
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          if [ -n "$ANTHROPIC_API_KEY" ]; then
+            echo "has_key=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_key=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::ANTHROPIC_API_KEY not set — skipping the live quality gate. Add it as a repository secret to enable."
+          fi
+
+      - name: Set up uv + Python
+        if: steps.secret.outputs.has_key == 'true'
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        if: steps.secret.outputs.has_key == 'true'
+        run: uv sync
+
+      - name: Install & start Ollama, pull model
+        if: steps.secret.outputs.has_key == 'true'
+        run: |
+          curl -fsSL https://ollama.com/install.sh | sh
+          ollama serve &
+          for i in $(seq 1 20); do curl -sf http://localhost:11434/api/version && break; sleep 2; done
+          ollama pull llama3.2:1b
+
+      - name: Run quality gate
+        if: steps.secret.outputs.has_key == 'true'
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          # CI runs on CPU/Linux; allow a little more tolerance than local Metal.
+          MLFLOW_TRACKING_URI: ""
+        run: uv run python -m mlip eval gate --tolerance 0.05

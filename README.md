@@ -52,6 +52,24 @@ flowchart TB
     MR -.serves champion.-> BK
 ```
 
+## Screenshots
+
+**Quality gate blocking a regression (CI)** — the gate fails the build when a candidate drops below the champion:
+
+![Quality gate](docs/images/quality-gate.png)
+
+**A/B harness** — two prompt variants compared head-to-head through the eval pipeline:
+
+![A/B harness](docs/images/ab-harness.png)
+
+**Serving observability (Grafana)** — QPS, time-to-first-token, latency, and cache hit rate:
+
+![Grafana serving dashboard](docs/images/grafana-serving.png)
+
+**Experiment tracking (MLflow)** — every eval run logged with params, metrics, and artifacts:
+
+![MLflow runs](docs/images/mlflow-runs.png)
+
 ## Quickstart
 
 **Prerequisites:** [`uv`](https://docs.astral.sh/uv/), Docker (for MLflow), and

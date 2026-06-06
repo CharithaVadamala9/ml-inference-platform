@@ -46,10 +46,17 @@ def _ragas_llm_and_embeddings():
 
 
 def score_ragas(records: list[Record]) -> dict[str, Any]:
-    """Run RAGAS faithfulness + answer_correctness over the records."""
+    """Run RAGAS over the records.
+
+    Faithfulness needs retrieved context, so it is only computed when context is
+    present (RAG mode). In no-RAG mode we score answer_correctness only.
+    """
     from ragas import EvaluationDataset, evaluate
     from ragas.dataset_schema import SingleTurnSample
     from ragas.metrics import answer_correctness, faithfulness
+
+    has_context = any(r["contexts"] for r in records)
+    metrics = [faithfulness, answer_correctness] if has_context else [answer_correctness]
 
     samples = [
         SingleTurnSample(
@@ -63,24 +70,24 @@ def score_ragas(records: list[Record]) -> dict[str, Any]:
     llm, embeddings = _ragas_llm_and_embeddings()
     result = evaluate(
         EvaluationDataset(samples=samples),
-        metrics=[faithfulness, answer_correctness],
+        metrics=metrics,
         llm=llm,
         embeddings=embeddings,
         show_progress=False,
     )
     df = result.to_pandas()
+
+    out: dict[str, Any] = {"answer_correctness": float(df["answer_correctness"].mean())}
     per_item = [
-        {
-            "faithfulness": _safe(row.get("faithfulness")),
-            "answer_correctness": _safe(row.get("answer_correctness")),
-        }
+        {"answer_correctness": _safe(row.get("answer_correctness"))}
         for row in df.to_dict(orient="records")
     ]
-    return {
-        "faithfulness": float(df["faithfulness"].mean()),
-        "answer_correctness": float(df["answer_correctness"].mean()),
-        "per_item": per_item,
-    }
+    if has_context:
+        out["faithfulness"] = float(df["faithfulness"].mean())
+        for item, row in zip(per_item, df.to_dict(orient="records"), strict=False):
+            item["faithfulness"] = _safe(row.get("faithfulness"))
+    out["per_item"] = per_item
+    return out
 
 
 def _safe(value: Any) -> float | None:

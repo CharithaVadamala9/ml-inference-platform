@@ -93,10 +93,14 @@ uv run python -m mlip rag retrieve "bias variance tradeoff"
 
 # 5. Run the eval pipeline (needs ANTHROPIC_API_KEY in .env)
 uv run python -m mlip eval run --name baseline --prompt-version v2
+uv run python -m mlip eval run --name bare --no-rag   # evaluate the bare model (no retrieval)
 
 # 6. A/B two variants and promote the winner as the "champion"
 uv run python -m mlip eval ab --a-prompt v1 --b-prompt v2 --promote-winner
 uv run python -m mlip eval champion        # show the current quality bar
+
+# ...or quantify what retrieval actually buys you (RAG vs no-RAG, same model)
+uv run python -m mlip eval compare-rag
 
 # 7. The quality gate (what CI runs): fails with exit 1 if a candidate
 #    regresses below the champion beyond tolerance

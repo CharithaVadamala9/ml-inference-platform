@@ -24,10 +24,13 @@ def run(
     name: str = typer.Option("baseline", help="Run name (also the MLflow run + report name)."),
     prompt_version: str = typer.Option("v2", help=f"One of: {', '.join(PROMPT_VARIANTS)}"),
     top_k: int = typer.Option(3, help="Documents retrieved per question."),
+    no_rag: bool = typer.Option(False, "--no-rag", help="Evaluate the bare model (no retrieval)."),
     no_mlflow: bool = typer.Option(False, help="Skip MLflow logging (just write the report)."),
 ) -> None:
-    """Evaluate one RAG config and print its scorecard."""
-    config = RagConfig(name=name, prompt_version=prompt_version, top_k=top_k)
+    """Evaluate one config and print its scorecard (RAG by default, or --no-rag)."""
+    config = RagConfig(
+        name=name, prompt_version=prompt_version, top_k=top_k, use_retrieval=not no_rag
+    )
     console.print(f"[bold]Evaluating[/bold] config={config.to_dict()}")
     result = run_eval(config, log_to_mlflow=not no_mlflow)
 
@@ -154,3 +157,36 @@ def gate(
         console.print(f"[red bold]❌ Quality gate FAILED — regressed: {regressed}[/red bold]")
         raise typer.Exit(code=1)
     console.print("[green bold]✅ Quality gate PASSED[/green bold]")
+
+
+@eval_app.command(name="compare-rag")
+def compare_rag(
+    prompt_version: str = typer.Option(
+        "v1", help=f"RAG prompt version: {', '.join(PROMPT_VARIANTS)}"
+    ),
+    top_k: int = typer.Option(3, help="Documents retrieved per question (RAG side)."),
+    no_mlflow: bool = typer.Option(False, help="Skip MLflow logging."),
+) -> None:
+    """Evaluate the SAME model with RAG vs without RAG, to show what retrieval buys."""
+    rag_cfg = RagConfig(name="with-rag", prompt_version=prompt_version, top_k=top_k)
+    norag_cfg = RagConfig(name="no-rag", use_retrieval=False)
+    console.print("[bold]Comparing[/bold] with-RAG vs no-RAG (same model)")
+    result = run_ab(
+        rag_cfg, norag_cfg, primary_metric="answer_correctness", log_to_mlflow=not no_mlflow
+    )
+
+    table = Table(title="RAG vs no-RAG")
+    for col in ("Metric", "with-RAG", "no-RAG", "Δ (RAG−none)", "Winner"):
+        table.add_column(col, style="cyan" if col == "Metric" else "white")
+    for c in result.comparisons:
+        # In this command A = with-RAG, B = no-RAG, so a positive delta means RAG helped.
+        winner = {
+            "A": "[green]RAG[/green]",
+            "B": "[yellow]no-RAG[/yellow]",
+            "tie": "[dim]tie[/dim]",
+        }[c.winner]
+        table.add_row(c.metric, f"{c.a:.3f}", f"{c.b:.3f}", f"{c.a - c.b:+.3f}", winner)
+    console.print(table)
+    console.print(
+        "[dim]Note: faithfulness can't be measured without retrieval, so it's RAG-only.[/dim]"
+    )

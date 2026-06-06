@@ -54,12 +54,14 @@ def _score_judge(state: EvalState) -> EvalState:
 
 
 def _aggregate(state: EvalState) -> EvalState:
-    scorecard = {
-        "faithfulness": state["ragas"]["faithfulness"],
-        "answer_correctness": state["ragas"]["answer_correctness"],
-        "judge_helpfulness": state["judge"]["judge_helpfulness"],
-        "n_examples": float(len(state["records"])),
-    }
+    ragas = state["ragas"]
+    scorecard: dict[str, float] = {}
+    # Faithfulness only exists in RAG mode (it needs retrieved context).
+    if "faithfulness" in ragas:
+        scorecard["faithfulness"] = ragas["faithfulness"]
+    scorecard["answer_correctness"] = ragas["answer_correctness"]
+    scorecard["judge_helpfulness"] = state["judge"]["judge_helpfulness"]
+    scorecard["n_examples"] = float(len(state["records"]))
     return {"scorecard": scorecard}
 
 

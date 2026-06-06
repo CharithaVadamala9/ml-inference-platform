@@ -24,6 +24,12 @@ class Settings(BaseSettings):
     # Embedding model used by the retriever and by RAGAS semantic scoring.
     embed_model: str = "all-MiniLM-L6-v2"
 
+    # ---- Eval judge cache ----
+    # Disk-cache judge verdicts (keyed by question+answer+model) so re-running the
+    # same eval during development does not re-call the paid Claude API.
+    judge_cache_enabled: bool = True
+    judge_cache_dir: str = ".cache/judge"
+
     # ---- Serving backend ----
     serving_backend: Literal["ollama", "vllm", "openai"] = "ollama"
     ollama_base_url: str = "http://localhost:11434"

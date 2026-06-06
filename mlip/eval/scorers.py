@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from mlip.config import settings
+from mlip.eval.judge_cache import JudgeCache
 from mlip.serving.backends import get_backend
 
 # ---- record shape shared across the pipeline --------------------------------
@@ -126,19 +127,33 @@ class LLMJudge:
 
     def __init__(self) -> None:
         self.backend = get_backend(settings.judge_provider, model=settings.judge_model)
+        self.cache = JudgeCache(settings.judge_model)
 
     def score_one(self, record: Record) -> JudgeVerdict:
+        question, answer = record["question"], record["answer"]
+        cached = self.cache.get(question, answer)
+        if cached is not None:
+            return JudgeVerdict(
+                score=cached["score"], raw_score=cached["raw_score"], reason=cached["reason"]
+            )
+
         prompt = JUDGE_TEMPLATE.format(
-            question=record["question"],
+            question=question,
             ground_truth=record["ground_truth"],
-            answer=record["answer"],
+            answer=answer,
         )
         reply = self.backend.chat(
             [{"role": "system", "content": JUDGE_SYSTEM}, {"role": "user", "content": prompt}],
             temperature=0.0,
             max_tokens=200,
         )
-        return self._parse(reply)
+        verdict = self._parse(reply)
+        self.cache.set(
+            question,
+            answer,
+            {"score": verdict.score, "raw_score": verdict.raw_score, "reason": verdict.reason},
+        )
+        return verdict
 
     @staticmethod
     def _parse(reply: str) -> JudgeVerdict:

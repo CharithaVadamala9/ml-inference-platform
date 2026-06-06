@@ -77,6 +77,7 @@ def ab(
         promote(
             config=winner.config,
             scorecard=winner.scorecard,
+            per_question=winner.per_question,
             mlflow_run_id=winner.run_id,
             tag_mlflow=not no_mlflow,
         )
@@ -96,6 +97,7 @@ def promote_cmd(
     record = promote(
         config=result.config,
         scorecard=result.scorecard,
+        per_question=result.per_question,
         mlflow_run_id=result.run_id,
         tag_mlflow=not no_mlflow,
     )

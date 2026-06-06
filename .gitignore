@@ -24,6 +24,9 @@ data/*.tmp
 *.faiss
 chroma/
 
+# Eval judge disk cache
+.cache/
+
 # Eval run outputs (generated artifacts; champion.json is the canonical record)
 reports/*.json
 !reports/.gitkeep

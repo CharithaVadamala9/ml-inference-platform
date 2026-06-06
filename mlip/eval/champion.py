@@ -28,13 +28,19 @@ def promote(
     *,
     config: dict[str, Any],
     scorecard: dict[str, float],
+    per_question: list[dict[str, Any]] | None = None,
     mlflow_run_id: str | None = None,
     tag_mlflow: bool = True,
 ) -> dict[str, Any]:
-    """Make this config the champion: write champion.json and tag the MLflow run."""
+    """Make this config the champion: write champion.json and tag the MLflow run.
+
+    `per_question` (id-keyed scores) is stored so the statistical gate can run
+    paired tests between a candidate and the champion on the same questions.
+    """
     record = {
         "config": config,
         "scorecard": scorecard,
+        "per_question": per_question or [],
         "mlflow_run_id": mlflow_run_id,
         "promoted_at": datetime.now(UTC).isoformat(),
     }

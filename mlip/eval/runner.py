@@ -24,6 +24,7 @@ class EvalRun:
     ragas: dict[str, Any]
     judge: dict[str, Any]
     report_path: Path
+    per_question: list[dict[str, Any]] = field(default_factory=list)
     run_id: str | None = None
     started_at: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
 
@@ -44,8 +45,9 @@ def run_eval(
         ragas={k: v for k, v in final["ragas"].items() if k != "per_item"},
         judge={k: v for k, v in final["judge"].items() if k != "per_item"},
         report_path=_report_path(config.name),
+        per_question=final.get("per_question", []),
     )
-    _write_report(run, final)
+    _write_report(run)
     if log_to_mlflow:
         run.run_id = _log_to_mlflow(run, experiment)
     return run
@@ -57,12 +59,12 @@ def _report_path(name: str) -> Path:
     return REPORTS_DIR / f"{name}-{stamp}.json"
 
 
-def _write_report(run: EvalRun, final: dict[str, Any]) -> None:
+def _write_report(run: EvalRun) -> None:
     payload = {
         "config": run.config,
         "scorecard": run.scorecard,
-        "ragas_per_item": final["ragas"].get("per_item"),
-        "judge_per_item": final["judge"].get("per_item"),
+        # id-keyed per-question scores — what the statistical gate reads for paired tests.
+        "per_question": run.per_question,
         "records": run.records,
         "started_at": run.started_at,
     }

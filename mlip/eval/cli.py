@@ -11,7 +11,12 @@ from rich.table import Table
 
 from mlip.eval.ab import run_ab
 from mlip.eval.champion import load_champion, promote
-from mlip.eval.gate import DEFAULT_TOLERANCE, evaluate_gate
+from mlip.eval.gate import (
+    DEFAULT_TOLERANCE,
+    StatGateResult,
+    evaluate_gate,
+    evaluate_gate_statistical,
+)
 from mlip.eval.runner import run_eval
 from mlip.rag.pipeline import PROMPT_VARIANTS, RagConfig
 
@@ -121,44 +126,108 @@ def champion() -> None:
     )
 
 
+def _candidate(report: Path | None, champion: dict, no_mlflow: bool) -> dict:
+    """Return the candidate's {scorecard, per_question} from a report or a fresh run."""
+    if report is not None:
+        console.print(f"[bold]Gating report[/bold] {report}")
+        data = json.loads(report.read_text(encoding="utf-8"))
+        return {
+            "scorecard": data.get("scorecard", {}),
+            "per_question": data.get("per_question", []),
+        }
+    console.print("[bold]Gating candidate[/bold] (champion config under current code)")
+    run = run_eval(RagConfig(**champion["config"]), log_to_mlflow=not no_mlflow)
+    return {"scorecard": run.scorecard, "per_question": run.per_question}
+
+
+def _render_stat(result: StatGateResult) -> None:
+    """Print the statistical-gate verdict table to the terminal."""
+    console.print(
+        f"[dim]Paired on id: {result.matched} matched · "
+        f"{result.dropped_candidate} candidate-only · {result.dropped_champion} champion-only · "
+        f"{result.content_mismatches} content mismatch(es) · "
+        f"correction={result.correction_method} @ alpha={result.alpha}[/dim]"
+    )
+    table = Table(title="Statistical quality gate")
+    for col in ("Metric", "Cat", "n", "Champion", "Candidate", "Δ", "95% CI", "Verdict"):
+        table.add_column(col, style="cyan" if col == "Metric" else "white")
+    for t in result.tests:
+        ci = "—" if t.kind == "mcnemar" else f"[{t.ci_lo:+.3f}, {t.ci_hi:+.3f}]"
+        if not t.gated:
+            verdict = "[dim]informational[/dim]"
+        elif t.regression:
+            verdict = "[red]significant regression[/red]"
+        else:
+            verdict = "[green]within noise[/green]"
+        table.add_row(
+            t.metric,
+            t.category,
+            str(t.n),
+            f"{t.champion_mean:.3f}",
+            f"{t.candidate_mean:.3f}",
+            f"{t.delta:+.3f}",
+            ci,
+            verdict,
+        )
+    console.print(table)
+
+
 @eval_app.command()
 def gate(
     report: Path | None = typer.Option(
-        None, help="Gate an existing report's scorecard instead of running a fresh eval."
+        None, help="Gate an existing report instead of running a fresh eval."
     ),
-    tolerance: float = typer.Option(DEFAULT_TOLERANCE, help="Allowed regression per metric."),
+    tolerance: float = typer.Option(DEFAULT_TOLERANCE, help="Naive-mode allowed regression."),
     no_mlflow: bool = typer.Option(True, help="Skip MLflow logging (default in CI)."),
 ) -> None:
-    """Fail (exit 1) if the candidate regresses below the champion. Used by CI."""
+    """Statistically-honest gate: FAIL only on a significant regression vs the champion."""
     champion = load_champion()
     if champion is None:
         console.print("[red]No champion to gate against. Run `mlip eval promote` first.[/red]")
         raise typer.Exit(code=1)
 
-    if report is not None:
-        candidate = json.loads(report.read_text(encoding="utf-8"))["scorecard"]
-        console.print(f"[bold]Gating report[/bold] {report}")
-    else:
-        # Evaluate the champion's own config with the current code/data/prompts.
-        config = RagConfig(**champion["config"])
-        console.print("[bold]Gating candidate[/bold] (champion config under current code)")
-        candidate = run_eval(config, log_to_mlflow=not no_mlflow).scorecard
+    cand = _candidate(report, champion, no_mlflow)
+    champion_pq = champion.get("per_question") or []
 
-    result = evaluate_gate(candidate, champion, tolerance=tolerance)
+    # Statistical gating needs the champion's per-question scores; older champions
+    # predate that. Fall back to the naive gate (loudly) and tell the user to re-promote.
+    if not champion_pq:
+        console.print(
+            "[yellow]⚠ Champion has no per-question data — cannot run the statistical "
+            "gate. Re-run `mlip eval promote` to enable it. Falling back to naive.[/yellow]"
+        )
+        naive = evaluate_gate(cand["scorecard"], champion, tolerance=tolerance)
+        for c in naive.checks:
+            status = "[green]PASS[/green]" if c.passed else "[red]FAIL[/red]"
+            console.print(f"  {c.metric}: cand {c.candidate:.3f} vs floor {c.floor:.3f} → {status}")
+        if not naive.passed:
+            console.print("[red bold]❌ Quality gate FAILED (naive)[/red bold]")
+            raise typer.Exit(code=1)
+        console.print("[green bold]✅ Quality gate PASSED (naive)[/green bold]")
+        return
 
-    table = Table(title=f"Quality gate (tolerance {tolerance})")
-    for col in ("Metric", "Candidate", "Champion", "Floor", "Status"):
-        table.add_column(col, style="cyan" if col == "Metric" else "white")
-    for c in result.checks:
-        status = "[green]PASS[/green]" if c.passed else "[red]FAIL[/red]"
-        table.add_row(c.metric, f"{c.candidate:.3f}", f"{c.champion:.3f}", f"{c.floor:.3f}", status)
-    console.print(table)
+    result = evaluate_gate_statistical(cand["per_question"], champion_pq)
+    _render_stat(result)
 
-    if not result.passed:
-        regressed = ", ".join(c.metric for c in result.failures)
-        console.print(f"[red bold]❌ Quality gate FAILED — regressed: {regressed}[/red bold]")
+    if result.insufficient_overlap:
+        console.print(
+            f"[red bold]❌ Gate FAILED — only {result.matched} paired questions "
+            f"(need ≥ {result.min_paired}); won't test against a different question set.[/red bold]"
+        )
         raise typer.Exit(code=1)
-    console.print("[green bold]✅ Quality gate PASSED[/green bold]")
+    if result.content_mismatches > 0:
+        console.print(
+            f"[red bold]❌ Gate FAILED — {result.content_mismatches} id(s) map to different "
+            "questions in champion vs candidate. Re-promote the champion.[/red bold]"
+        )
+        raise typer.Exit(code=1)
+    if not result.passed:
+        regressed = ", ".join(f"{t.metric}/{t.category}" for t in result.gated_failures)
+        console.print(
+            f"[red bold]❌ Quality gate FAILED — significant regression: {regressed}[/red bold]"
+        )
+        raise typer.Exit(code=1)
+    console.print("[green bold]✅ Quality gate PASSED (no significant regression)[/green bold]")
 
 
 @eval_app.command(name="compare-rag")

@@ -30,6 +30,16 @@ class Settings(BaseSettings):
     judge_cache_enabled: bool = True
     judge_cache_dir: str = ".cache/judge"
 
+    # ---- Statistical gate ----
+    # Paired bootstrap CI + significance testing for the quality gate.
+    gate_alpha: float = 0.05  # 1 - alpha = 95% CI
+    bootstrap_resamples: int = 10000
+    bootstrap_seed: int = 42  # seed so gate verdicts are reproducible
+    correction_method: Literal["benjamini-hochberg", "bonferroni"] = "benjamini-hochberg"
+    judge_pass_threshold: int = 4  # judge_raw >= this counts as a "pass" (McNemar)
+    gate_judge: bool = False  # judge metric is informational by default
+    min_paired_questions: int = 5  # warn/fail if champion<->candidate overlap is smaller
+
     # ---- Serving backend ----
     serving_backend: Literal["ollama", "vllm", "openai"] = "ollama"
     ollama_base_url: str = "http://localhost:11434"

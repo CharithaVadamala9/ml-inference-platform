@@ -27,3 +27,11 @@ def test_gate_fails_on_regression():
     result = evaluate_gate(candidate, CHAMPION, tolerance=0.03)
     assert not result.passed
     assert [c.metric for c in result.failures] == ["faithfulness"]
+
+
+def test_gate_skips_metric_missing_from_candidate():
+    # A no-RAG candidate has no faithfulness; the gate should only check what exists.
+    candidate = {"answer_correctness": 0.72}
+    result = evaluate_gate(candidate, CHAMPION, tolerance=0.03)
+    assert [c.metric for c in result.checks] == ["answer_correctness"]
+    assert result.passed

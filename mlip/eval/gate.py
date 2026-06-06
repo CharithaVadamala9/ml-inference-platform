@@ -53,8 +53,11 @@ def evaluate_gate(
     tolerance: float = DEFAULT_TOLERANCE,
 ) -> GateResult:
     champion_scores = champion_record["scorecard"]
+    # Only gate on metrics present in both the candidate and the champion
+    # (a no-RAG run has no faithfulness to gate on).
+    gate_metrics = [m for m in (metrics or GATE_METRICS) if m in candidate and m in champion_scores]
     checks = [
         MetricCheck(m, float(candidate[m]), float(champion_scores[m]), tolerance)
-        for m in (metrics or GATE_METRICS)
+        for m in gate_metrics
     ]
     return GateResult(checks)

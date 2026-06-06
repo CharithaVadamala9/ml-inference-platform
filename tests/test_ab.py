@@ -22,6 +22,14 @@ def test_compare_scorecards_covers_all_metrics():
     assert by_metric["judge_helpfulness"].winner == "A"
 
 
+def test_compare_scorecards_skips_metric_missing_from_one_side():
+    # RAG vs no-RAG: only the RAG side has faithfulness, so it's excluded.
+    rag = {"faithfulness": 0.7, "answer_correctness": 0.6, "judge_helpfulness": 0.8}
+    norag = {"answer_correctness": 0.4, "judge_helpfulness": 0.7}
+    metrics = {c.metric for c in compare_scorecards(rag, norag)}
+    assert metrics == {"answer_correctness", "judge_helpfulness"}
+
+
 def test_champion_promote_and_load_roundtrip(monkeypatch, tmp_path):
     monkeypatch.setattr(champ, "CHAMPION_PATH", tmp_path / "champion.json")
     assert champ.load_champion() is None

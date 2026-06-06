@@ -65,3 +65,29 @@ def test_runner_writes_report(monkeypatch, tmp_path):
     assert saved["scorecard"]["faithfulness"] == 0.8
     assert saved["config"]["name"] == "unit"
     assert len(saved["records"]) == 2
+
+
+def test_eval_graph_norag_omits_faithfulness(monkeypatch):
+    # No-RAG: RAGAS returns no faithfulness, so the scorecard must omit it.
+    monkeypatch.setattr(graph_mod, "RagPipeline", _FakePipeline)
+    monkeypatch.setattr(
+        graph_mod,
+        "load_eval",
+        lambda: [EvalExample(id="q1", question="Q1?", ground_truth="A1", source_ids=[])],
+    )
+    monkeypatch.setattr(
+        graph_mod, "score_ragas", lambda records: {"answer_correctness": 0.7, "per_item": []}
+    )
+
+    class _FakeJudge:
+        def score(self, records):
+            return {"judge_helpfulness": 0.9, "per_item": []}
+
+    monkeypatch.setattr(graph_mod, "LLMJudge", _FakeJudge)
+    final = graph_mod.build_eval_graph().invoke(
+        {"config": RagConfig(use_retrieval=False).to_dict()}
+    )
+    sc = final["scorecard"]
+    assert "faithfulness" not in sc
+    assert sc["answer_correctness"] == 0.7
+    assert sc["judge_helpfulness"] == 0.9

@@ -51,7 +51,9 @@ class ABResult:
 def compare_scorecards(
     a: dict[str, float], b: dict[str, float], primary_metric: str = "faithfulness"
 ) -> list[MetricComparison]:
-    return [MetricComparison(m, float(a[m]), float(b[m])) for m in COMPARE_METRICS]
+    # Only compare metrics both runs actually have (a no-RAG run has no faithfulness).
+    metrics = [m for m in COMPARE_METRICS if m in a and m in b]
+    return [MetricComparison(m, float(a[m]), float(b[m])) for m in metrics]
 
 
 def run_ab(

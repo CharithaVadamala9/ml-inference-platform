@@ -28,6 +28,10 @@ PROMPT_VARIANTS: dict[str, str] = {
     ),
 }
 
+# Used in no-RAG mode: the model answers from its own knowledge, with no retrieved
+# context. This lets the platform evaluate a bare model, not just a RAG pipeline.
+DIRECT_PROMPT = "Answer the question concisely in 1-3 sentences.\n\nQuestion: {question}\nAnswer:"
+
 
 @dataclass(frozen=True)
 class RagConfig:
@@ -38,6 +42,7 @@ class RagConfig:
     model: str | None = None
     temperature: float = 0.0
     max_tokens: int = 256
+    use_retrieval: bool = True  # False -> bare model, no documents (no-RAG mode)
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -54,17 +59,28 @@ class RagResult:
 class RagPipeline:
     def __init__(self, config: RagConfig | None = None, retriever: Retriever | None = None):
         self.config = config or RagConfig()
-        self.retriever = retriever or Retriever()
+        # Only build the retriever when retrieval is actually used (no-RAG mode
+        # needs no corpus or embedding model).
+        if self.config.use_retrieval:
+            self.retriever = retriever or Retriever()
+        else:
+            self.retriever = retriever
         self._backend: ChatBackend = get_backend(self.config.backend, model=self.config.model)
 
     def _format_context(self, docs: list[Document]) -> str:
         return "\n\n".join(f"[{d.title}] {d.text}" for d in docs)
 
     def answer(self, question: str) -> RagResult:
-        hits = self.retriever.retrieve(question, k=self.config.top_k)
-        docs = [h.document for h in hits]
-        template = PROMPT_VARIANTS[self.config.prompt_version]
-        prompt = template.format(context=self._format_context(docs), question=question)
+        if self.config.use_retrieval:
+            assert self.retriever is not None
+            hits = self.retriever.retrieve(question, k=self.config.top_k)
+            docs = [h.document for h in hits]
+            template = PROMPT_VARIANTS[self.config.prompt_version]
+            prompt = template.format(context=self._format_context(docs), question=question)
+        else:
+            docs = []
+            prompt = DIRECT_PROMPT.format(question=question)
+
         answer = self._backend.chat(
             [{"role": "user", "content": prompt}],
             temperature=self.config.temperature,

@@ -1,28 +1,134 @@
-# How It Works — A Plain-English Guide
+# ML Inference Platform — What We Built & How It Works
 
-This document explains **what we built, every tool we used, what each tool does
-in this project, and why we chose it.** No jargon left unexplained.
+A single, plain-English guide to **what this project does**, **what we built**,
+**every tool we used and why**, and **how it all fits together**. No jargon left
+unexplained.
 
 ---
 
-## 1. What we built (in one paragraph)
+## 1. What we built (in one sentence)
 
-An **end-to-end LLM platform** with two halves joined by a logbook:
-
-1. A **question-answering system** (RAG) that answers from a trusted set of
-   documents instead of making things up.
-2. An **evaluation + quality-gate system** that automatically grades those
-   answers and **blocks any change that makes quality worse** before it ships.
-
-Plus a **serving layer** (an API + live dashboards) so the model can be used and
-monitored in production, and **MLflow** recording every experiment.
+**We built a platform that answers questions from your own documents, automatically
+grades how good those answers are, blocks any change that makes the AI worse, and
+serves it with live performance dashboards.**
 
 The headline idea: **model quality is treated like a test in CI** — a model that
 gets less faithful literally cannot be merged.
 
 ---
 
-## 2. The big picture: two "doors" + a logbook
+## 2. What it does — capability by capability
+
+Each capability below is described as *what you give it* → *what you get back*.
+
+### 1. Answers questions from your own documents (grounded Q&A)
+- **What it does:** takes a question, finds the most relevant documents, and answers
+  using *only* those documents — and cites which ones it used.
+- **You give → you get:** a question → a grounded answer + its sources (or an honest
+  *"I don't know"* if the answer isn't in the documents).
+- **Why it matters:** it doesn't make things up. The answer is traceable to a source
+  you can verify — essential for support, legal, medical, or finance.
+- **Try it:** `mlip rag ask "Why does dropout help?"`
+
+### 2. Learns from any documents you give it
+- **What it does:** drop your own documents into the knowledge base and it answers
+  from them immediately — no retraining.
+- **You give → you get:** a set of documents → a Q&A system over them.
+- **Why it matters:** the same engine becomes a support bot, an internal company
+  assistant, or a domain expert just by swapping the documents.
+
+### 3. Automatically grades answer quality
+- **What it does:** runs the AI over a set of test questions (with known correct
+  answers) and scores each answer three ways: **faithfulness** (stuck to the
+  sources?), **correctness** (matches the truth?), **helpfulness** (a strong AI's
+  rating).
+- **You give → you get:** a configuration (model/prompt/settings) → a **scorecard**
+  of those three numbers.
+- **Why it matters:** you *measure* quality with numbers instead of eyeballing a few
+  answers and hoping.
+- **Try it:** `mlip eval run --name baseline`
+
+### 4. Evaluates the model with OR without retrieval
+- **What it does:** grades the full RAG system *or* the bare model on its own — and
+  can run both to show the difference.
+- **You give → you get:** a model → scores with-RAG vs without-RAG, side by side.
+- **Why it matters:** proves, with numbers, **what retrieval actually buys you**, and
+  means the platform can evaluate *any* model, not just a RAG pipeline.
+- **Try it:** `mlip eval run --no-rag` · `mlip eval compare-rag`
+
+### 5. Compares two versions head-to-head (A/B testing)
+- **What it does:** runs two variants (e.g., two prompts) through the same evaluation
+  and declares a winner per metric.
+- **You give → you get:** two configurations → a side-by-side comparison + the winner.
+- **Why it matters:** decide changes with evidence. (Our own A/B found the "stricter"
+  prompt was actually *worse* — a regression we'd have shipped on instinct.)
+- **Try it:** `mlip eval ab --a-prompt v1 --b-prompt v2`
+
+### 6. Remembers the best version (the "champion")
+- **What it does:** stores the best-scoring configuration as the **champion** — the
+  quality bar everything else must beat.
+- **You give → you get:** a winning run → a saved quality bar.
+- **Why it matters:** it gives the system a definition of "good enough to ship."
+- **Try it:** `mlip eval promote` · `mlip eval champion`
+
+### 7. Blocks bad versions automatically (the quality gate) ⭐
+- **What it does:** on every proposed change it re-grades the model and **fails the
+  build if quality dropped** below the champion — automatically, on GitHub.
+- **You give → you get:** a proposed change → **PASS** (allowed) or **FAIL** (blocked),
+  naming the exact metric that regressed.
+- **Why it matters:** **the AI cannot get worse without someone noticing.** Most teams
+  test that *code* works; this tests that the *AI is still good.* This is the headline.
+- **Try it:** `mlip eval gate --report <a-run>.json`
+
+### 8. Serves the model through an API
+- **What it does:** exposes the model behind a web endpoint that streams answers and
+  instantly reuses (caches) repeated requests.
+- **You give → you get:** a prompt over HTTP → a generated answer.
+- **Why it matters:** it's how a real application would actually call the model.
+- **Try it:** `mlip serve` then `POST /generate`
+
+### 9. Shows live performance dashboards
+- **What it does:** tracks in real time **how busy** (QPS), **how fast** (time to
+  first token, latency), and **how efficient** (cache hit rate) the serving is.
+- **You give → you get:** live traffic → live graphs on a dashboard.
+- **Why it matters:** production observability — see if it's healthy, fast, efficient.
+
+### 10. Records every experiment
+- **What it does:** logs every evaluation run's settings, scores, and full report.
+- **You give → you get:** any run → a searchable history you can compare over time.
+- **Why it matters:** you never lose track of what you tried or how it scored.
+
+---
+
+## 3. The problems it solves (at a glance)
+
+| Problem | What the platform does about it |
+|---|---|
+| The AI **makes things up** | grounds answers in your documents + scores **faithfulness** |
+| Quality **silently gets worse** after a change | the **quality gate** blocks the regression in CI |
+| *"Is the new version actually better?"* | **A/B testing** + scorecards decide with data |
+| *"Why even use RAG?"* | **compare-rag** measures RAG vs no-RAG |
+| *"Is it fast / healthy in production?"* | live **Grafana dashboards** (QPS, TTFT, cache) |
+| *"What did we try, and how did it score?"* | **MLflow** experiment history |
+
+---
+
+## 4. What you can run (cheat sheet)
+
+| Command | What it does | What you get back |
+|---|---|---|
+| `mlip rag ask "..."` | answer a question from the documents | grounded answer + sources |
+| `mlip eval run` | grade the model on the test set | a scorecard (3 metrics) |
+| `mlip eval run --no-rag` | grade the bare model (no documents) | a scorecard (2 metrics) |
+| `mlip eval compare-rag` | RAG vs no-RAG, same model | a comparison table |
+| `mlip eval ab` | compare two variants | winner per metric |
+| `mlip eval promote` | set the current best as champion | a saved quality bar |
+| `mlip eval gate` | check a version against the champion | PASS / FAIL (exit 0/1) |
+| `mlip serve` | run the serving API | a live `/generate` endpoint |
+
+---
+
+## 5. The big picture: two "doors" + a logbook
 
 ```
                 ┌────────────────── DOOR 1: ASK ──────────────────┐
@@ -43,230 +149,144 @@ gets less faithful literally cannot be merged.
    live stats (speed, throughput, cache) to Prometheus + Grafana.
 ```
 
-- **Door 1** *produces* answers.
-- **Door 2** *judges* answers and *gates* releases.
+- **Door 1** *produces* answers. **Door 2** *judges* answers and *gates* releases.
 - **MLflow** *remembers* every run.
 
 ---
 
-## 3. The flow, step by step
+## 6. The flow, step by step
 
 ### Asking a question (Door 1)
 1. You ask a question.
-2. The question is turned into an **embedding** (a list of numbers representing
-   its meaning).
-3. The **retriever** finds the documents whose embeddings are closest in meaning
-   (**semantic search**).
-4. Those documents + your question are handed to the **LLM** (via Ollama).
-5. The LLM writes an answer **using only those documents**, and shows its sources
-   — or says *"I don't know"* if the answer isn't there.
+2. The question is turned into an **embedding** (numbers representing its meaning).
+3. The **retriever** finds the documents closest in meaning (**semantic search**).
+4. Those documents + your question go to the **LLM** (via Ollama).
+5. The LLM answers **using only those documents** and shows sources — or says
+   *"I don't know."*
 
 ### Grading the model (Door 2)
-1. The system runs the model over a fixed list of test questions (with known
-   correct answers).
-2. Each answer is graded three ways: **faithfulness**, **correctness**,
-   **helpfulness**.
-3. The scores are compared against the **champion** (the best version so far).
+1. The system runs the model over a fixed list of test questions (known answers).
+2. Each answer is graded: **faithfulness**, **correctness**, **helpfulness**.
+3. Scores are compared against the **champion** (best so far).
 4. If quality dropped, the **quality gate fails the build** → the change is blocked.
 5. Everything is logged to **MLflow**.
 
 ---
 
-## 4. Every tool — what it is, what it does here, and why we chose it
+## 7. Every tool — what it is, what it does here, why we chose it
 
 ### 🧠 The model & how it runs
 
-**Ollama**
-- **What it is:** a tool that runs open-source LLMs locally on your own computer
-  (think "Docker for language models"). It exposes an OpenAI-style API at
-  `localhost:11434`.
-- **What it does in this project:** it **runs the model that writes the answers**
-  — both the answers we evaluate (Door 1) and the answers the serving layer
-  returns. It's our "generator engine."
-- **Why we chose it:** it's **free, local, and private** (no API bills, nothing
-  leaves your machine), it's GPU-accelerated on Mac, and it speaks the **same
-  API style as vLLM** — so we can swap to vLLM later with no code rewrite.
+**Ollama** — runs open-source LLMs locally (like "Docker for models"), with an
+OpenAI-style API. *Here:* it **runs the model that writes the answers** (the ones we
+evaluate and serve). *Why:* free, local, private, GPU-accelerated on Mac, and speaks
+the same API as vLLM → swappable later with no rewrite.
 
-**Llama 3.2 (1B)**
-- **What it is:** the actual open-weight model that Ollama runs (1 billion
-  parameters — small and fast).
-- **What it does:** it's the "student" that reads documents and writes answers.
-- **Why we chose it:** small enough to run instantly on a laptop for free, while
-  still good enough to demonstrate the whole pipeline. (In production you'd swap
-  in a larger model served by vLLM.)
+**Llama 3.2 (1B)** — the open-weight model Ollama runs (small/fast). *Here:* the
+"student" that reads documents and writes answers. *Why:* runs instantly on a laptop
+for free while still demonstrating the full pipeline.
 
-**vLLM** *(built for, not running by default)*
-- **What it is:** a high-performance engine for serving LLMs to many users fast
-  (needs an NVIDIA GPU).
-- **What it does in this project:** it's the **production serving option**. Our
-  serving layer has a `vllm` backend ready to point at a GPU; switching to it is
-  a config change, not a rewrite.
-- **Why it's here:** it's the standard way to serve open-weight models at scale,
-  and keeping it pluggable shows the design scales beyond the laptop demo.
+**vLLM** *(built for, not running by default)* — a high-throughput GPU serving engine.
+*Here:* the **production serving option**; our serving layer has a `vllm` backend ready
+to point at a GPU. *Why:* the standard way to serve open models at scale; keeping it
+pluggable shows the design scales beyond the laptop.
 
 ### 🔎 Retrieval (the "RAG" part)
 
-**sentence-transformers** (model: `all-MiniLM-L6-v2`)
-- **What it is:** a library that turns text into **embeddings** (meaning-vectors).
-- **What it does:** powers the **retriever** — it converts every document and
-  every question into numbers so we can find the closest matches by *meaning*,
-  not keywords (**semantic search**).
-- **Why we chose it:** it's **free, runs locally on CPU**, is the widely-recognized
-  standard for embeddings, and needs no API.
+**sentence-transformers** (`all-MiniLM-L6-v2`) — turns text into **embeddings**
+(meaning-vectors). *Here:* powers the **retriever** (semantic search). *Why:* free,
+local, CPU-friendly, the recognized standard.
 
-**RAG (Retrieval-Augmented Generation)** *(the technique, not a tool)*
-- **What it is:** the pattern of *retrieving relevant documents first, then asking
-  the model to answer using them* — like an open-book exam.
-- **Why we use it:** it **grounds** answers in trusted sources and **reduces
-  hallucination**, without retraining the model. It's why the system can answer
-  from *your* documents and say "I don't know" when the answer isn't present.
+**RAG (Retrieval-Augmented Generation)** *(the technique)* — retrieve relevant docs
+first, then answer using them (open-book). *Why:* **grounds** answers and **reduces
+hallucination** without retraining.
 
 ### 📊 Evaluation (the "grading" part)
 
-**LangGraph**
-- **What it is:** a framework for building multi-step AI workflows as a graph
-  (a flowchart of steps).
-- **What it does:** it **orchestrates the eval pipeline** in order:
-  `generate answers → score with RAGAS → score with the judge → aggregate`.
-- **Why we chose it:** it makes the pipeline clean, inspectable, and easy to
-  extend; "agentic orchestration" is also a highly in-demand skill.
+**LangGraph** — builds multi-step AI workflows as a graph. *Here:* **orchestrates the
+eval pipeline** (`generate → score → aggregate`). *Why:* clean, inspectable
+orchestration; an in-demand "agentic" skill.
 
-**RAGAS**
-- **What it is:** a popular library of metrics for evaluating RAG systems.
-- **What it does:** computes two of our grades — **faithfulness** (is the answer
-  grounded in the retrieved documents?) and **answer correctness** (does it match
-  the known-correct answer?).
-- **Why we chose it:** it's the **recognized standard** for RAG evaluation, so it's
-  credible on a résumé and battle-tested.
+**RAGAS** — a popular RAG-evaluation metrics library. *Here:* computes **faithfulness**
+and **answer correctness**. *Why:* the recognized standard for RAG eval.
 
-**Anthropic Claude (model: Claude Haiku)**
-- **What it is:** a frontier LLM from Anthropic, accessed via API.
-- **What it does in this project — two jobs:**
-  1. It's the **LLM-as-a-judge** — it reads each answer and rates its overall
-     helpfulness 1–5 with a short reason.
-  2. It's the **brain RAGAS uses** to compute faithfulness and correctness
-     (those metrics need a strong LLM to do the judging).
-- **Why we chose it:** the **grader should be more capable than the model being
-  graded.** Claude is reliable and good at structured judgments, and **Haiku** is
-  cheap (a few cents per eval run). Using a different, stronger model as the judge
-  also avoids a model "grading its own homework."
+**Anthropic Claude (Claude Haiku)** — a frontier LLM via API. *Here, two jobs:*
+(1) the **LLM-as-a-judge** rating helpfulness; (2) the **brain RAGAS uses** to compute
+faithfulness/correctness. *Why:* the grader should be **stronger than the model it
+grades**; Claude is reliable, **Haiku is cheap** (cents per run), and using a different
+model avoids "grading its own homework."
 
 ### 📒 Tracking
 
-**MLflow**
-- **What it is:** an industry-standard tool for experiment tracking and model
-  registry ("git for ML experiments").
-- **What it does:** records every eval run — the settings used, the scores, and
-  the full report — and stores the **champion** (current best). You browse it all
-  in a web UI.
-- **Why we chose it:** it's the standard for ML experiment tracking, gives you a
-  searchable history of every experiment, and provides the "registry" concept the
-  quality gate compares against.
+**MLflow** — industry-standard experiment tracking + registry. *Here:* records every
+run's settings/scores/report and stores the **champion**. *Why:* the standard; gives a
+searchable history and the registry the gate compares against.
 
 ### ⚡ Serving & observability
 
-**FastAPI**
-- **What it is:** a modern, fast Python web framework for building APIs.
-- **What it does:** it's the **serving gateway** — the front door with endpoints
-  `/generate` (get an answer), `/health` (is it alive?), and `/metrics` (stats).
-- **Why we chose it:** it's the de-facto standard for serving Python/ML services,
-  fast, and supports streaming responses (needed to measure time-to-first-token).
+**FastAPI** — a fast, modern Python web framework. *Here:* the **serving gateway**
+(`/generate`, `/health`, `/metrics`). *Why:* the de-facto standard for ML serving;
+supports streaming (needed for time-to-first-token).
 
-**Prometheus**
-- **What it is:** a monitoring system that scrapes and stores numeric metrics
-  over time.
-- **What it does:** every few seconds it collects the serving stats — **QPS**
-  (queries/sec), **TTFT** (time to first token), latency, and cache hit rate.
-- **Why we chose it:** it's the industry standard for metrics in production.
+**Prometheus** — collects/stores numeric metrics over time. *Here:* gathers **QPS,
+TTFT, latency, cache hit rate** every few seconds. *Why:* the industry standard for
+metrics.
 
-**Grafana**
-- **What it is:** a dashboard tool that draws metrics as live graphs.
-- **What it does:** displays the Prometheus metrics on a provisioned "MLIP —
-  Serving" dashboard (QPS, TTFT, latency, cache hit rate, tokens/sec).
-- **Why we chose it:** it's the standard pairing with Prometheus and makes the
-  serving health visible at a glance.
+**Grafana** — draws metrics as live dashboards. *Here:* the "MLIP — Serving" dashboard.
+*Why:* the standard pairing with Prometheus.
 
 ### 🧰 Infrastructure, tooling & automation
 
-**Docker / Docker Compose**
-- **What it is:** containers that package each tool so it runs the same anywhere.
-- **What it does:** spins up MLflow, Prometheus, and Grafana with one command.
-- **Why we chose it:** reproducibility — anyone can run the infra without manual
-  setup.
+**Docker / Docker Compose** — containers that run each tool anywhere. *Here:* spins up
+MLflow + Prometheus + Grafana with one command. *Why:* reproducibility.
 
-**GitHub Actions**
-- **What it is:** GitHub's built-in automation/CI system.
-- **What it does:** on every push/PR it runs **lint + tests**, and the **quality
-  gate** that blocks a merge if model quality regresses.
-- **Why we chose it:** it's free for public repos and turns "model quality" into an
-  enforced, automatic check — the project's headline feature.
+**GitHub Actions** — GitHub's CI/automation. *Here:* runs **lint + tests** and the
+**quality gate** on every push/PR. *Why:* turns "model quality" into an enforced,
+automatic check.
 
-**uv**
-- **What it is:** a fast, modern Python package & environment manager.
-- **What it does:** installs the exact right dependencies (locked for
-  reproducibility) and runs the project.
-- **Why we chose it:** it's far faster than pip and gives a clean, reproducible
-  setup — a strong signal of modern tooling.
+**uv** — a fast, modern Python package/env manager. *Here:* installs locked
+dependencies and runs the project. *Why:* fast + reproducible.
 
-**ruff**
-- **What it is:** an extremely fast Python linter + formatter.
-- **What it does:** keeps the code consistently styled and catches issues.
-- **Why we chose it:** speed + it replaces several older tools in one.
+**ruff** — a fast linter + formatter. *Why:* keeps code clean; one tool replaces many.
 
-**pytest**
-- **What it is:** the standard Python testing framework.
-- **What it does:** runs the 20 automated tests that prove each part works
-  (offline, no API needed).
-- **Why we chose it:** it's the standard, and the tests signal the code is real
-  and reliable.
+**pytest** — the standard test framework. *Here:* the 20 offline tests. *Why:* proves
+the code is real and reliable.
 
-**Pydantic / pydantic-settings**
-- **What it is:** a library for typed data + loading config from environment/`.env`.
-- **What it does:** provides one typed `Settings` object — the single source of
-  truth for model names, API keys, and service URLs.
-- **Why we chose it:** clean, validated configuration in one place.
+**Pydantic / pydantic-settings** — typed data + config from `.env`. *Here:* one typed
+`Settings` object (keys, model names, URLs). *Why:* clean, validated config in one place.
 
-**Typer + Rich**
-- **What it is:** Typer builds command-line interfaces; Rich makes pretty terminal
-  output (tables, colors).
-- **What it does:** powers the `mlip` command (`mlip rag ask`, `mlip eval run`,
-  `mlip eval gate`, …) with nicely formatted output.
-- **Why we chose it:** a clean CLI makes the whole platform easy to drive and demo.
+**Typer + Rich** — CLI framework + pretty terminal output. *Here:* the `mlip` command
+and its formatted tables. *Why:* makes the platform easy to drive and demo.
 
 ---
 
-## 5. Two modes: with RAG and without
+## 8. Two modes: with RAG and without
 
-The platform can evaluate the model **two ways**:
+- **With RAG (open-book):** the model is given retrieved documents and answers from
+  them. Graded on faithfulness + correctness + helpfulness.
+- **Without RAG (closed-book):** the model answers from its **own training memory**, no
+  documents. Graded on correctness + helpfulness (faithfulness doesn't apply — no
+  sources to be faithful to).
 
-- **With RAG (open-book):** the model is given retrieved documents and answers
-  from them. Graded on faithfulness + correctness + helpfulness.
-- **Without RAG (closed-book):** the model answers from its **own training
-  memory**, no documents. Graded on correctness + helpfulness (faithfulness
-  doesn't apply — there are no sources to be faithful to).
-
-Running both (`mlip eval compare-rag`) shows, with numbers, **what retrieval
-actually buys you** — i.e., *why RAG matters.*
+Running both (`mlip eval compare-rag`) shows, with numbers, **what retrieval buys you.**
 
 ---
 
-## 6. Honest scope & how it scales
+## 9. Honest scope & how it scales
 
-- **Today (demo scale):** ~13 documents searched in memory, a 1B model via
-  Ollama, single process. Perfect for demonstrating the full pipeline for free.
-- **To scale up (no rewrite, by design):**
-  - Retrieval → swap the in-memory search for a **vector database** (FAISS, Qdrant,
-    pgvector).
-  - Serving → flip the backend from **Ollama to vLLM** on a GPU.
-  - Throughput → add batching + async.
+- **Today (demo scale):** ~13 documents searched in memory, a 1B model via Ollama,
+  single process — perfect for demonstrating the full pipeline for free.
+- **To scale up (no rewrite, by design):** swap the in-memory search for a **vector
+  database** (FAISS, Qdrant, pgvector); flip the backend from **Ollama to vLLM** on a
+  GPU; add batching + async.
 
-The value of this project isn't a novel invention — it's a **clean, working,
-end-to-end implementation of an LLMOps pipeline**: build, evaluate, gate, serve,
-and monitor an LLM, with the right patterns to grow.
+The value isn't a novel invention — it's a **clean, working, end-to-end LLMOps
+pipeline**: build, evaluate, gate, serve, and monitor an LLM, with the right patterns
+to grow.
 
 ---
 
-## 7. Quick glossary
+## 10. Quick glossary
 
 | Term | Plain meaning |
 |------|---------------|

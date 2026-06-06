@@ -114,6 +114,15 @@ def test_per_question_is_built_and_persisted(monkeypatch, tmp_path):
     assert pq[0]["judge_raw"] == 4
     assert pq[1]["judge_score"] == 0.5
 
+    # content_hash is content-derived (lets the gate verify paired ids match).
+    assert len(pq[0]["content_hash"]) == 16
+    assert pq[0]["content_hash"] != pq[1]["content_hash"]
+
+    # No drift: the aggregate scorecard is consistent with per_question means.
+    assert abs(run.scorecard["faithfulness"] - 0.85) < 1e-9  # mean(0.8, 0.9)
+    assert abs(run.scorecard["answer_correctness"] - 0.65) < 1e-9  # mean(0.7, 0.6)
+    assert abs(run.scorecard["judge_helpfulness"] - 0.625) < 1e-9  # mean(0.75, 0.5)
+
     # Persisted: the report file carries per_question too (so the gate can read it).
     saved = json.loads(run.report_path.read_text())
     assert saved["per_question"][1]["id"] == "q2"

@@ -9,6 +9,7 @@ or fanning out scorers in parallel later).
 
 from __future__ import annotations
 
+import hashlib
 from typing import Any, TypedDict
 
 from langgraph.graph import END, START, StateGraph
@@ -85,11 +86,14 @@ def _build_per_question(state: EvalState) -> list[dict[str, Any]]:
         per_question.append(
             {
                 "id": rec["id"],
+                # content-derived fingerprint so the gate can verify a paired id
+                # really refers to the same question in champion and candidate.
+                "content_hash": hashlib.sha256(rec["question"].encode()).hexdigest()[:16],
                 "category": rec.get("category", "uncategorized"),
                 "faithfulness": r.get("faithfulness"),
                 "answer_correctness": r.get("answer_correctness"),
-                "judge_score": j.get("score"),
-                "judge_raw": j.get("raw_score"),
+                "judge_score": j.get("score"),  # normalized 0-1
+                "judge_raw": j.get("raw_score"),  # raw 1-5 Likert (McNemar threshold uses this)
                 "judge_reason": j.get("reason"),
             }
         )

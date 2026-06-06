@@ -149,7 +149,8 @@ def _render_stat(result: StatGateResult) -> None:
         f"correction={result.correction_method} @ alpha={result.alpha}[/dim]"
     )
     table = Table(title="Statistical quality gate")
-    for col in ("Metric", "Cat", "n", "Champion", "Candidate", "Δ", "95% CI", "Verdict"):
+    # The CI is per-comparison; the Verdict uses the multiplicity-adjusted p-value.
+    for col in ("Metric", "Cat", "n", "Champion", "Candidate", "Δ", "95% CI (per-comp)", "Verdict"):
         table.add_column(col, style="cyan" if col == "Metric" else "white")
     for t in result.tests:
         ci = "—" if t.kind == "mcnemar" else f"[{t.ci_lo:+.3f}, {t.ci_hi:+.3f}]"
@@ -221,6 +222,14 @@ def gate(
             "questions in champion vs candidate. Re-promote the champion.[/red bold]"
         )
         raise typer.Exit(code=1)
+    # A merely different question set (added/removed) is allowed — proceed on the
+    # intersection, but say so out loud.
+    if result.dropped_candidate or result.dropped_champion:
+        console.print(
+            f"[yellow]⚠ Question set differs ({result.dropped_candidate} candidate-only, "
+            f"{result.dropped_champion} champion-only) — testing on the {result.matched} "
+            "shared questions.[/yellow]"
+        )
     if not result.passed:
         regressed = ", ".join(f"{t.metric}/{t.category}" for t in result.gated_failures)
         console.print(

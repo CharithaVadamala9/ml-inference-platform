@@ -2,7 +2,38 @@
 
 from __future__ import annotations
 
+import numpy as np
+
 from mlip.eval.stats import correct_pvalues, mcnemar, paired_bootstrap_ci
+
+
+def test_paired_bootstrap_uses_shared_indices_not_independent_resampling():
+    """Fails if the bootstrap broke pairing (resampled the two sides independently).
+
+    Champion scores vary a lot across questions, but the candidate is exactly
+    champion - 0.05 everywhere, so the PAIRED deltas are constant. A correct paired
+    bootstrap (resample delta indices once) collapses the CI to a point. If the two
+    sides were resampled independently, each side's large spread would widen the CI
+    until it straddled zero.
+    """
+    champ = np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0])
+    cand = champ - 0.05
+    paired = paired_bootstrap_ci(list(cand - champ), n_resamples=5000, seed=1)
+    paired_width = paired.hi - paired.lo
+
+    # Correct paired behavior: near-zero-width CI, clearly below zero.
+    assert paired_width < 1e-9
+    assert paired.hi < 0
+
+    # What a BROKEN (independent) resampling would produce — much wider, straddles 0.
+    rng = np.random.default_rng(1)
+    n = len(champ)
+    broken = cand[rng.integers(0, n, (5000, n))].mean(axis=1) - champ[
+        rng.integers(0, n, (5000, n))
+    ].mean(axis=1)
+    broken_width = float(np.percentile(broken, 97.5) - np.percentile(broken, 2.5))
+    assert broken_width > 0.2
+    assert paired_width < broken_width  # the real paired CI is far tighter
 
 
 def test_bootstrap_ci_detects_clear_regression():

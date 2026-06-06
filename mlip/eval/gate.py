@@ -82,18 +82,22 @@ class StatTest:
     delta: float  # candidate - champion (negative = regression)
     ci_lo: float
     ci_hi: float
-    p_value: float
+    p_value: float  # per-comparison two-sided bootstrap/McNemar p (NOT multiplicity-adjusted)
     kind: str  # "bootstrap" | "mcnemar"
     gated: bool  # can this test fail the build?
-    raw_significant: bool  # per-test significance (CI<0, or McNemar p<alpha & b>c)
-    corrected_reject: bool = False  # survives multiple-comparison correction
+    corrected_reject: bool = False  # BH/Bonferroni-adjusted p < alpha (the binding signal)
     b: int | None = None  # McNemar: champion-pass/candidate-fail
     c: int | None = None  # McNemar: champion-fail/candidate-pass
 
     @property
     def regression(self) -> bool:
-        """Final verdict: a gated, significant regression that survives correction."""
-        return self.gated and self.delta < 0 and self.raw_significant and self.corrected_reject
+        """Binding verdict: a gated regression whose multiplicity-ADJUSTED p < alpha.
+
+        The displayed ci_lo/ci_hi are per-comparison (not multiplicity-adjusted);
+        the gate decision uses the corrected p-value to stay coherent with the
+        multiple-comparison control.
+        """
+        return self.gated and self.delta < 0 and self.corrected_reject
 
 
 @dataclass
@@ -223,7 +227,6 @@ def evaluate_gate_statistical(
                     p_value=ci.p_value,
                     kind="bootstrap",
                     gated=True,
-                    raw_significant=ci.hi < 0,
                 )
             )
 
@@ -254,7 +257,6 @@ def evaluate_gate_statistical(
                     p_value=mc.p_value,
                     kind="mcnemar",
                     gated=gate_judge,
-                    raw_significant=(mc.b > mc.c and mc.p_value < alpha),
                     b=mc.b,
                     c=mc.c,
                 )

@@ -39,6 +39,9 @@ class Settings(BaseSettings):
     judge_pass_threshold: int = 4  # judge_raw >= this counts as a "pass" (McNemar)
     gate_judge: bool = False  # judge metric is informational by default
     min_paired_questions: int = 5  # warn/fail if champion<->candidate overlap is smaller
+    # Faithfulness is ill-defined for abstentions, so it is excluded for these
+    # categories (the bucket is gated on answer_correctness only).
+    faithfulness_skip_categories: list[str] = ["unanswerable"]
 
     # ---- Serving backend ----
     serving_backend: Literal["ollama", "vllm", "openai"] = "ollama"

@@ -154,6 +154,7 @@ def evaluate_gate_statistical(
     judge_pass_threshold: int | None = None,
     gate_judge: bool | None = None,
     min_paired: int | None = None,
+    faithfulness_skip_categories: list[str] | None = None,
 ) -> StatGateResult:
     """Paired, statistically-honest gate over per-question scores.
 
@@ -183,6 +184,11 @@ def evaluate_gate_statistical(
     gate_judge = settings.gate_judge if gate_judge is None else gate_judge
     min_paired = settings.min_paired_questions if min_paired is None else min_paired
     gate_metrics = gate_metrics or GATE_METRICS
+    skip_faith = set(
+        settings.faithfulness_skip_categories
+        if faithfulness_skip_categories is None
+        else faithfulness_skip_categories
+    )
 
     cand = {r["id"]: r for r in candidate_pq}
     champ = {r["id"]: r for r in champion_pq}
@@ -215,6 +221,11 @@ def evaluate_gate_statistical(
         for metric in gate_metrics:
             deltas, cvals, pvals = [], [], []
             for i in ids:
+                # Faithfulness is ill-defined for abstentions: drop those questions
+                # from every faithfulness test (so the unanswerable bucket has no
+                # faithfulness test, and the aggregate excludes them too).
+                if metric == "faithfulness" and cand[i].get("category") in skip_faith:
+                    continue
                 cv, pv = cand[i].get(metric), champ[i].get(metric)
                 if cv is None or pv is None:
                     continue

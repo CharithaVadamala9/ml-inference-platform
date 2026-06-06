@@ -1,19 +1,142 @@
 {
   "config": {
-    "name": "A-v1-k3",
+    "name": "champion",
     "prompt_version": "v1",
     "top_k": 3,
     "backend": null,
     "model": null,
     "temperature": 0.0,
-    "max_tokens": 256
+    "max_tokens": 256,
+    "use_retrieval": true
   },
   "scorecard": {
-    "faithfulness": 0.7566798941798942,
-    "answer_correctness": 0.7128934866225247,
+    "faithfulness": 0.7265516890516891,
+    "answer_correctness": 0.7320460628474693,
     "judge_helpfulness": 0.9166666666666666,
     "n_examples": 12.0
   },
-  "mlflow_run_id": "9ea4f8725ef44aa5a964381465da5baf",
-  "promoted_at": "2026-05-29T20:16:38.751985+00:00"
+  "per_question": [
+    {
+      "id": "q1",
+      "content_hash": "0da80ea0688f31ad",
+      "category": "uncategorized",
+      "faithfulness": 1.0,
+      "answer_correctness": 0.7784564120068217,
+      "judge_score": 1.0,
+      "judge_raw": 5,
+      "judge_reason": "The candidate answer is comprehensive and accurate, covering the core concept (parameter update size), the mechanism (scaling step size in gradient descent), the effects of high/low rates, and the goals (convergence, preventing divergence/oscillation), which fully addresses and expands upon the reference answer."
+    },
+    {
+      "id": "q2",
+      "content_hash": "494462715b8e7781",
+      "category": "uncategorized",
+      "faithfulness": 0.5833333333333334,
+      "answer_correctness": 0.642409265329386,
+      "judge_score": 1.0,
+      "judge_raw": 5,
+      "judge_reason": "The candidate answer accurately explains the key differences between L1 and L2 regularization, correctly identifies them as Lasso and Ridge respectively, and clearly describes how L1 produces sparse solutions while L2 shrinks weights smoothly\u2014all core points from the reference answer with helpful additional context."
+    },
+    {
+      "id": "q3",
+      "content_hash": "27df2f5d32fb841c",
+      "category": "uncategorized",
+      "faithfulness": 0.9,
+      "answer_correctness": 0.8758557177966058,
+      "judge_score": 1.0,
+      "judge_raw": 5,
+      "judge_reason": "The candidate answer accurately defines overfitting, correctly identifies the key symptom (low training error but high validation error), and provides additional helpful context about increased variance and model generalization."
+    },
+    {
+      "id": "q4",
+      "content_hash": "ce2342064c24052e",
+      "category": "uncategorized",
+      "faithfulness": 0.2857142857142857,
+      "answer_correctness": 0.7656135739261014,
+      "judge_score": 1.0,
+      "judge_raw": 5,
+      "judge_reason": "The candidate answer accurately explains dropout's mechanism and its benefits for generalization, aligning with the reference answer while providing additional helpful detail about overfitting reduction and feature generalization."
+    },
+    {
+      "id": "q5",
+      "content_hash": "ecc7c2fa1eee9405",
+      "category": "uncategorized",
+      "faithfulness": 1.0,
+      "answer_correctness": 0.8767015606188895,
+      "judge_score": 1.0,
+      "judge_raw": 5,
+      "judge_reason": "The candidate answer accurately explains the bias-variance tradeoff with clear definitions of both components and correctly describes the inverse relationship between them, matching the reference answer's core concepts while providing slightly more detail."
+    },
+    {
+      "id": "q6",
+      "content_hash": "a245001b6e6b3725",
+      "category": "uncategorized",
+      "faithfulness": 1.0,
+      "answer_correctness": 0.5591311076889077,
+      "judge_score": 0.75,
+      "judge_raw": 4,
+      "judge_reason": "The candidate answer correctly identifies the primary purposes of the validation set (hyperparameter tuning and model selection) and appropriately emphasizes separation from the test set, though it slightly mischaracterizes validation as 'not used for testing' when it's more accurately used for evaluation during development rather than final testing."
+    },
+    {
+      "id": "q7",
+      "content_hash": "ffa09b8e045a5078",
+      "category": "uncategorized",
+      "faithfulness": 0.3,
+      "answer_correctness": 0.46432749912769655,
+      "judge_score": 0.75,
+      "judge_raw": 4,
+      "judge_reason": "The candidate answer correctly explains what cross-entropy loss measures and its primary use in classification, with helpful examples, though it omits the key detail that it represents the negative log probability of the correct class."
+    },
+    {
+      "id": "q8",
+      "content_hash": "b1194e52bf236c25",
+      "category": "uncategorized",
+      "faithfulness": 1.0,
+      "answer_correctness": 0.7853916065606846,
+      "judge_score": 1.0,
+      "judge_raw": 5,
+      "judge_reason": "The candidate answer accurately captures what backpropagation computes (gradients of loss w.r.t. parameters) and how (chain rule, backward propagation), while adding helpful context about optimizer usage without introducing errors."
+    },
+    {
+      "id": "q9",
+      "content_hash": "e67ab5478945c4c8",
+      "category": "uncategorized",
+      "faithfulness": 0.5384615384615384,
+      "answer_correctness": 0.5872655871030612,
+      "judge_score": 0.75,
+      "judge_raw": 4,
+      "judge_reason": "Candidate provides accurate and comprehensive explanation of batch normalization's benefits with good detail, though the explanation of 'mean and variance as weights' in point 2 is slightly imprecise compared to the reference's clarity."
+    },
+    {
+      "id": "q10",
+      "content_hash": "c1c23a7a5dbfad30",
+      "category": "uncategorized",
+      "faithfulness": 0.6666666666666666,
+      "answer_correctness": 0.8590546373265173,
+      "judge_score": 1.0,
+      "judge_raw": 5,
+      "judge_reason": "The candidate answer correctly identifies the key reason (parallel processing via self-attention) and explains the scalability advantage clearly, matching the reference answer's core insight while providing slightly more context about processing speed benefits."
+    },
+    {
+      "id": "q11",
+      "content_hash": "f1793629fd818db3",
+      "category": "uncategorized",
+      "faithfulness": 0.4444444444444444,
+      "answer_correctness": 0.7233605506475824,
+      "judge_score": 0.75,
+      "judge_raw": 4,
+      "judge_reason": "The candidate answer correctly explains RAG's core mechanism and its anti-hallucination benefit, though it adds some speculative details about neurons and redundant representations that aren't directly relevant to the main explanation."
+    },
+    {
+      "id": "q12",
+      "content_hash": "5c8277b8e402d3c0",
+      "category": "uncategorized",
+      "faithfulness": 1.0,
+      "answer_correctness": 0.8669852360373776,
+      "judge_score": 1.0,
+      "judge_raw": 5,
+      "judge_reason": "The candidate answer accurately defines SGD, explains the computational benefit of using small batches, and correctly identifies that noise helps escape local minima\u2014all key points matching the reference answer."
+    }
+  ],
+  "mlflow_run_id": null,
+  "promoted_at": "2026-06-06T22:07:26.338542+00:00"
 }

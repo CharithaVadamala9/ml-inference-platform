@@ -11,6 +11,7 @@ from rich.table import Table
 
 from mlip.eval.ab import run_ab
 from mlip.eval.champion import load_champion, promote
+from mlip.eval.comment import render_naive_markdown, render_stat_markdown
 from mlip.eval.gate import (
     DEFAULT_TOLERANCE,
     StatGateResult,
@@ -173,18 +174,31 @@ def _render_stat(result: StatGateResult) -> None:
     console.print(table)
 
 
+def _write_comment(comment: Path | None, markdown: str) -> None:
+    if comment is not None:
+        comment.write_text(markdown, encoding="utf-8")
+
+
 @eval_app.command()
 def gate(
     report: Path | None = typer.Option(
         None, help="Gate an existing report instead of running a fresh eval."
     ),
     tolerance: float = typer.Option(DEFAULT_TOLERANCE, help="Naive-mode allowed regression."),
+    comment: Path | None = typer.Option(
+        None, help="Write the verdict as a Markdown file (for the PR comment / step summary)."
+    ),
     no_mlflow: bool = typer.Option(True, help="Skip MLflow logging (default in CI)."),
 ) -> None:
     """Statistically-honest gate: FAIL only on a significant regression vs the champion."""
     champion = load_champion()
     if champion is None:
         console.print("[red]No champion to gate against. Run `mlip eval promote` first.[/red]")
+        _write_comment(
+            comment,
+            "## 🧪 Eval Quality Gate — ❌ FAIL\n\nNo champion to gate against. "
+            "Run `mlip eval promote` first.",
+        )
         raise typer.Exit(code=1)
 
     cand = _candidate(report, champion, no_mlflow)
@@ -201,6 +215,7 @@ def gate(
         for c in naive.checks:
             status = "[green]PASS[/green]" if c.passed else "[red]FAIL[/red]"
             console.print(f"  {c.metric}: cand {c.candidate:.3f} vs floor {c.floor:.3f} → {status}")
+        _write_comment(comment, render_naive_markdown(naive, tolerance=tolerance))
         if not naive.passed:
             console.print("[red bold]❌ Quality gate FAILED (naive)[/red bold]")
             raise typer.Exit(code=1)
@@ -210,17 +225,22 @@ def gate(
     result = evaluate_gate_statistical(cand["per_question"], champion_pq)
     _render_stat(result)
 
+    blocked_reason: str | None = None
     if result.insufficient_overlap:
-        console.print(
-            f"[red bold]❌ Gate FAILED — only {result.matched} paired questions "
-            f"(need ≥ {result.min_paired}); won't test against a different question set.[/red bold]"
+        blocked_reason = (
+            f"Only {result.matched} paired questions (need ≥ {result.min_paired}); "
+            "won't test against a different question set."
         )
-        raise typer.Exit(code=1)
-    if result.content_mismatches > 0:
-        console.print(
-            f"[red bold]❌ Gate FAILED — {result.content_mismatches} id(s) map to different "
-            "questions in champion vs candidate. Re-promote the champion.[/red bold]"
+    elif result.content_mismatches > 0:
+        blocked_reason = (
+            f"{result.content_mismatches} id(s) map to different questions in champion "
+            "vs candidate. Re-promote the champion."
         )
+
+    _write_comment(comment, render_stat_markdown(result, blocked_reason=blocked_reason))
+
+    if blocked_reason:
+        console.print(f"[red bold]❌ Gate FAILED — {blocked_reason}[/red bold]")
         raise typer.Exit(code=1)
     # A merely different question set (added/removed) is allowed — proceed on the
     # intersection, but say so out loud.

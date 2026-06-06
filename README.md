@@ -22,6 +22,9 @@ This repo connects two loops that every real LLM product needs but few side-proj
 **MLflow** sits between them as the registry/experiment store — the single source of truth
 for "which model is the champion."
 
+> 📖 **New here?** Read [docs/HOW_IT_WORKS.md](docs/HOW_IT_WORKS.md) — a plain-English guide
+> to what was built, every tool used, and *why* (Ollama, Anthropic, RAGAS, vLLM, and more).
+
 ## Architecture
 
 ```mermaid

@@ -6,6 +6,7 @@ push updates one comment instead of spamming new ones.
 
 from __future__ import annotations
 
+from mlip.eval.calibration import CalibrationResult
 from mlip.eval.gate import GateResult, StatGateResult
 
 
@@ -29,8 +30,14 @@ def _stat_table(result: StatGateResult) -> list[str]:
     return rows
 
 
-def render_stat_markdown(result: StatGateResult, *, blocked_reason: str | None = None) -> str:
-    header = "✅ PASS" if (result.passed and not blocked_reason) else "❌ FAIL"
+def render_stat_markdown(
+    result: StatGateResult,
+    *,
+    blocked_reason: str | None = None,
+    calibration: CalibrationResult | None = None,
+) -> str:
+    drifted = calibration is not None and not calibration.passed
+    header = "✅ PASS" if (result.passed and not blocked_reason and not drifted) else "❌ FAIL"
     lines = [
         f"## 🧪 Eval Quality Gate — {header}",
         "",
@@ -41,6 +48,13 @@ def render_stat_markdown(result: StatGateResult, *, blocked_reason: str | None =
             f"Correction: **{result.correction_method}** @ α={result.alpha}."
         ),
     ]
+    if calibration is not None:
+        status = "✅ ok" if calibration.passed else "❌ DRIFTED — judge no longer trustworthy"
+        lines += [
+            "",
+            f"**Judge calibration:** Cohen's κ = {calibration.kappa:.3f} "
+            f"(threshold {calibration.threshold}) on {calibration.n} gold items — {status}",
+        ]
     if blocked_reason:
         lines += ["", f"> ❌ **Blocked:** {blocked_reason}"]
     if result.dropped_candidate or result.dropped_champion:

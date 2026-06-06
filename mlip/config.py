@@ -43,6 +43,13 @@ class Settings(BaseSettings):
     # categories (the bucket is gated on answer_correctness only).
     faithfulness_skip_categories: list[str] = ["unanswerable"]
 
+    # ---- Judge-calibration audit ----
+    # Agreement (Cohen's kappa) between the LLM judge and a human-labeled gold set.
+    # If kappa drops below the threshold the judge has drifted and the gate fails.
+    calibration_path: str = "data/calibration.jsonl"
+    kappa_threshold: float = 0.4
+    gate_calibration: bool = True  # run the calibration audit as part of the gate
+
     # ---- Serving backend ----
     serving_backend: Literal["ollama", "vllm", "openai"] = "ollama"
     ollama_base_url: str = "http://localhost:11434"

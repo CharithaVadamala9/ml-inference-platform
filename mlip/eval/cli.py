@@ -9,7 +9,9 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
+from mlip.config import settings
 from mlip.eval.ab import run_ab
+from mlip.eval.calibration import load_calibration, log_kappa_mlflow, run_calibration
 from mlip.eval.champion import load_champion, promote
 from mlip.eval.comment import render_naive_markdown, render_stat_markdown
 from mlip.eval.gate import (
@@ -237,7 +239,22 @@ def gate(
             "vs candidate. Re-promote the champion."
         )
 
-    _write_comment(comment, render_stat_markdown(result, blocked_reason=blocked_reason))
+    # Judge-calibration audit: if the judge has drifted from the human gold set,
+    # its verdicts (and the champion baseline) are untrustworthy -> fail.
+    calib = None
+    if settings.gate_calibration and load_calibration():
+        calib = run_calibration()
+        log_kappa_mlflow(calib.kappa)
+        color = "green" if calib.passed else "red"
+        console.print(
+            f"[{color}]Judge calibration: kappa={calib.kappa:.3f} "
+            f"(threshold {calib.threshold}) on {calib.n} items → "
+            f"{'PASS' if calib.passed else 'DRIFTED'}[/{color}]"
+        )
+
+    _write_comment(
+        comment, render_stat_markdown(result, blocked_reason=blocked_reason, calibration=calib)
+    )
 
     if blocked_reason:
         console.print(f"[red bold]❌ Gate FAILED — {blocked_reason}[/red bold]")
@@ -250,13 +267,38 @@ def gate(
             f"{result.dropped_champion} champion-only) — testing on the {result.matched} "
             "shared questions.[/yellow]"
         )
-    if not result.passed:
-        regressed = ", ".join(f"{t.metric}/{t.category}" for t in result.gated_failures)
-        console.print(
-            f"[red bold]❌ Quality gate FAILED — significant regression: {regressed}[/red bold]"
-        )
+
+    drifted = calib is not None and not calib.passed
+    if not result.passed or drifted:
+        reasons = []
+        if not result.passed:
+            regressed = ", ".join(f"{t.metric}/{t.category}" for t in result.gated_failures)
+            reasons.append(f"significant regression: {regressed}")
+        if drifted:
+            reasons.append(
+                f"judge drift (kappa {calib.kappa:.3f} < {calib.threshold}) — baseline untrustworthy"
+            )
+        console.print(f"[red bold]❌ Quality gate FAILED — {'; '.join(reasons)}[/red bold]")
         raise typer.Exit(code=1)
-    console.print("[green bold]✅ Quality gate PASSED (no significant regression)[/green bold]")
+    console.print("[green bold]✅ Quality gate PASSED[/green bold]")
+
+
+@eval_app.command()
+def calibrate() -> None:
+    """Audit the LLM judge against the human-labeled gold set (Cohen's kappa)."""
+    if not load_calibration():
+        console.print(f"[yellow]No calibration set at {settings.calibration_path}.[/yellow]")
+        raise typer.Exit(code=0)
+    result = run_calibration()
+    log_kappa_mlflow(result.kappa)
+    color = "green" if result.passed else "red"
+    console.print(
+        f"[{color}]Judge calibration: kappa={result.kappa:.3f} "
+        f"(threshold {result.threshold}) · {result.agreements}/{result.n} agree → "
+        f"{'OK' if result.passed else 'DRIFTED — judge untrustworthy'}[/{color}]"
+    )
+    if not result.passed:
+        raise typer.Exit(code=1)
 
 
 @eval_app.command(name="compare-rag")

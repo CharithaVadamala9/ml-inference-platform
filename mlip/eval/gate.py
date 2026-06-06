@@ -160,6 +160,16 @@ def evaluate_gate_statistical(
     Joins candidate<->champion on `id` (verifying content_hash), runs a paired
     bootstrap CI per continuous metric and McNemar for the binary judge metric,
     then applies a multiple-comparison correction across the gated tests.
+
+    Stratified gating: when questions carry categories, a test is created for each
+    gated metric on the aggregate ("overall") AND on each category. ALL of these
+    gated tests form a SINGLE multiple-comparison family, so the gate catches both
+    a diffuse aggregate regression and one concentrated in a single subgroup
+    (e.g. "unanswerable") even when the aggregate looks fine.
+
+    Power caveat (intended, not a flaw): per-category n is small, so only sizeable
+    category regressions are detectable; subtle subgroup drops can wash out. Add
+    more questions per category to raise sensitivity.
     """
     alpha = settings.gate_alpha if alpha is None else alpha
     n_resamples = settings.bootstrap_resamples if n_resamples is None else n_resamples

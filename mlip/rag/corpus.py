@@ -24,6 +24,9 @@ class EvalExample:
     question: str
     ground_truth: str
     source_ids: list[str]
+    # Optional tag for stratified (per-category) gating, e.g. "factual",
+    # "multi-hop", "unanswerable". Defaults so older datasets still load.
+    category: str = "uncategorized"
 
 
 def _read_jsonl(path: Path) -> list[dict]:

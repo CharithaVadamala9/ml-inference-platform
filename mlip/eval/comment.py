@@ -49,10 +49,17 @@ def render_stat_markdown(result: StatGateResult, *, blocked_reason: str | None =
             f"> ⚠️ Question set differs — testing on the {result.matched} shared questions.",
         ]
     lines += ["", *_stat_table(result), ""]
-    lines.append(
+    footnote = (
         f"<sub>Verdict uses the multiplicity-adjusted p-value (α={result.alpha}); "
-        "the CI shown is per-comparison. The judge metric is informational.</sub>"
+        "the CI shown is per-comparison. The judge metric is informational."
     )
+    has_categories = any(t.category != "overall" for t in result.tests)
+    if has_categories:
+        footnote += (
+            " Aggregate + per-category tests share one correction family. Per-category n "
+            "is small, so only sizeable subgroup regressions are detectable."
+        )
+    lines.append(footnote + "</sub>")
     return "\n".join(lines)
 
 

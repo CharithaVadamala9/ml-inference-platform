@@ -71,6 +71,59 @@ def test_insufficient_overlap_flagged():
     assert result.matched == 3
 
 
+def _pq_cat(specs):
+    """Build per_question from (id, category, faithfulness, answer_correctness, judge_raw)."""
+    return [
+        {
+            "id": i,
+            "content_hash": f"h{i}",
+            "category": cat,
+            "faithfulness": f,
+            "answer_correctness": a,
+            "judge_raw": j,
+        }
+        for (i, cat, f, a, j) in specs
+    ]
+
+
+def test_concentrated_subgroup_regression_is_caught_even_if_aggregate_is_flat():
+    # 30 questions across 3 categories. Two categories improve (+0.1), one
+    # ("unanswerable") drops (-0.2). Aggregate faithfulness delta nets to ~0
+    # (within noise), but the subgroup regression must still fail the gate.
+    champ_specs, cand_specs = [], []
+    for k in range(10):
+        champ_specs.append((f"f{k}", "factual", 0.8, 0.7, 5))
+        cand_specs.append((f"f{k}", "factual", 0.9, 0.7, 5))  # +0.1
+    for k in range(10):
+        champ_specs.append((f"m{k}", "multi-hop", 0.8, 0.7, 5))
+        cand_specs.append((f"m{k}", "multi-hop", 0.9, 0.7, 5))  # +0.1
+    for k in range(10):
+        champ_specs.append((f"u{k}", "unanswerable", 0.8, 0.7, 5))
+        cand_specs.append((f"u{k}", "unanswerable", 0.6, 0.7, 5))  # -0.2
+
+    result = evaluate_gate_statistical(_pq_cat(cand_specs), _pq_cat(champ_specs))
+    failed = {(t.metric, t.category) for t in result.gated_failures}
+
+    assert not result.passed
+    assert ("faithfulness", "unanswerable") in failed  # subgroup caught
+    assert ("faithfulness", "overall") not in failed  # aggregate stayed within noise
+
+
+def test_small_subgroup_regression_within_noise_is_not_flagged():
+    # Honest power limit: a small, noisy regression in a small subgroup washes out.
+    champ_specs, cand_specs = [], []
+    for k in range(10):  # a flat "common" category
+        champ_specs.append((f"c{k}", "common", 0.8, 0.7, 5))
+        cand_specs.append((f"c{k}", "common", 0.8, 0.7, 5))
+    jitter = [0.70, 0.84, 0.70, 0.84, 0.70, 0.84, 0.70, 0.84]  # mean ~-0.03 vs 0.8, noisy
+    for k in range(8):  # a small "rare" category with a tiny noisy drop
+        champ_specs.append((f"r{k}", "rare", 0.8, 0.7, 5))
+        cand_specs.append((f"r{k}", "rare", jitter[k], 0.7, 5))
+
+    result = evaluate_gate_statistical(_pq_cat(cand_specs), _pq_cat(champ_specs))
+    assert result.passed  # too small / too noisy to detect -> not flagged
+
+
 def test_content_hash_mismatch_fails():
     champ = _pq(IDS, [0.9] * 10, [0.7] * 10, [5] * 10)
     cand = _pq(IDS, [0.9] * 10, [0.7] * 10, [5] * 10)

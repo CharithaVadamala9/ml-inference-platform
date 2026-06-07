@@ -13,7 +13,7 @@ from mlip.config import settings
 from mlip.eval.ab import run_ab
 from mlip.eval.calibration import load_calibration, log_kappa_mlflow, run_calibration
 from mlip.eval.champion import load_champion, promote
-from mlip.eval.comment import render_naive_markdown, render_stat_markdown
+from mlip.eval.comment import render_gate_markdown, render_naive_markdown
 from mlip.eval.gate import (
     DEFAULT_TOLERANCE,
     StatGateResult,
@@ -190,9 +190,16 @@ def gate(
     comment: Path | None = typer.Option(
         None, help="Write the verdict as a Markdown file (for the PR comment / step summary)."
     ),
+    naive: bool = typer.Option(
+        False, "--naive", help="Make the legacy mean-threshold check the binding decision."
+    ),
     no_mlflow: bool = typer.Option(True, help="Skip MLflow logging (default in CI)."),
 ) -> None:
-    """Statistically-honest gate: FAIL only on a significant regression vs the champion."""
+    """Statistically-honest gate: FAIL only on a significant regression vs the champion.
+
+    The PR comment always shows BOTH the statistical and naive verdicts; --naive
+    flips which one is binding (controls the exit code).
+    """
     champion = load_champion()
     if champion is None:
         console.print("[red]No champion to gate against. Run `mlip eval promote` first.[/red]")
@@ -226,6 +233,7 @@ def gate(
 
     result = evaluate_gate_statistical(cand["per_question"], champion_pq)
     _render_stat(result)
+    naive_result = evaluate_gate(cand["scorecard"], champion, tolerance=tolerance)
 
     blocked_reason: str | None = None
     if result.insufficient_overlap:
@@ -239,28 +247,31 @@ def gate(
             "vs candidate. Re-promote the champion."
         )
 
-    # Judge-calibration audit: if the judge has drifted from the human gold set,
-    # its verdicts (and the champion baseline) are untrustworthy -> fail.
+    # Judge-calibration audit (statistical mode only; the legacy gate had none).
     calib = None
-    if settings.gate_calibration and load_calibration():
+    if not naive and settings.gate_calibration and load_calibration():
         calib = run_calibration()
         log_kappa_mlflow(calib.kappa)
         color = "green" if calib.passed else "red"
         console.print(
             f"[{color}]Judge calibration: kappa={calib.kappa:.3f} "
-            f"(threshold {calib.threshold}) on {calib.n} items → "
-            f"{'PASS' if calib.passed else 'DRIFTED'}[/{color}]"
+            f"(threshold {calib.threshold}) → {'PASS' if calib.passed else 'DRIFTED'}[/{color}]"
         )
 
+    # Always show BOTH verdicts; --naive flips which one is binding.
+    naive_status = "[green]PASS[/green]" if naive_result.passed else "[red]FAIL[/red]"
+    console.print(f"[bold]Naive (legacy mean-threshold):[/bold] {naive_status}")
     _write_comment(
-        comment, render_stat_markdown(result, blocked_reason=blocked_reason, calibration=calib)
+        comment,
+        render_gate_markdown(
+            stat=result,
+            naive=naive_result,
+            calibration=calib,
+            blocked_reason=blocked_reason,
+            naive_binding=naive,
+        ),
     )
 
-    if blocked_reason:
-        console.print(f"[red bold]❌ Gate FAILED — {blocked_reason}[/red bold]")
-        raise typer.Exit(code=1)
-    # A merely different question set (added/removed) is allowed — proceed on the
-    # intersection, but say so out loud.
     if result.dropped_candidate or result.dropped_champion:
         console.print(
             f"[yellow]⚠ Question set differs ({result.dropped_candidate} candidate-only, "
@@ -269,15 +280,25 @@ def gate(
         )
 
     drifted = calib is not None and not calib.passed
-    if not result.passed or drifted:
-        reasons = []
-        if not result.passed:
-            regressed = ", ".join(f"{t.metric}/{t.category}" for t in result.gated_failures)
-            reasons.append(f"significant regression: {regressed}")
-        if drifted:
-            reasons.append(
-                f"judge drift (kappa {calib.kappa:.3f} < {calib.threshold}) — baseline untrustworthy"
-            )
+    if naive:
+        # Legacy behavior: only the mean-threshold check is binding.
+        if not naive_result.passed:
+            console.print("[red bold]❌ Quality gate FAILED (naive, binding)[/red bold]")
+            raise typer.Exit(code=1)
+        console.print("[green bold]✅ Quality gate PASSED (naive, binding)[/green bold]")
+        return
+
+    reasons = []
+    if blocked_reason:
+        reasons.append(blocked_reason)
+    if not result.passed:
+        regressed = ", ".join(f"{t.metric}/{t.category}" for t in result.gated_failures)
+        reasons.append(f"significant regression: {regressed}")
+    if drifted:
+        reasons.append(
+            f"judge drift (kappa {calib.kappa:.3f} < {calib.threshold}) — baseline untrustworthy"
+        )
+    if reasons:
         console.print(f"[red bold]❌ Quality gate FAILED — {'; '.join(reasons)}[/red bold]")
         raise typer.Exit(code=1)
     console.print("[green bold]✅ Quality gate PASSED[/green bold]")

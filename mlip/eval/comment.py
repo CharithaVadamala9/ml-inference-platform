@@ -77,6 +77,65 @@ def render_stat_markdown(
     return "\n".join(lines)
 
 
+def render_gate_markdown(
+    *,
+    stat: StatGateResult,
+    naive: GateResult,
+    calibration: CalibrationResult | None = None,
+    blocked_reason: str | None = None,
+    naive_binding: bool = False,
+) -> str:
+    """Render BOTH the naive and statistical verdicts side by side on every PR."""
+    drifted = calibration is not None and not calibration.passed
+    stat_ok = stat.passed and not blocked_reason and not drifted
+    binding_ok = naive.passed if naive_binding else stat_ok
+    binding_name = "naive (legacy mean-threshold)" if naive_binding else "statistical (adjusted)"
+    header = "✅ PASS" if binding_ok else "❌ FAIL"
+
+    lines = [
+        f"## 🧪 Eval Quality Gate — {header}",
+        "",
+        f"**Binding decision:** {binding_name} · the other verdict is shown for comparison.",
+        "",
+        f"### Statistical (paired CI + McNemar + {stat.correction_method}) {'✅' if stat_ok else '❌'}",
+        (
+            f"Paired on `id`: {stat.matched} matched · {stat.dropped_candidate} candidate-only · "
+            f"{stat.dropped_champion} champion-only · {stat.content_mismatches} mismatch."
+        ),
+        "",
+        *_stat_table(stat),
+        "",
+    ]
+    if calibration is not None:
+        status = "✅ ok" if calibration.passed else "❌ DRIFTED — judge untrustworthy"
+        lines += [
+            f"**Judge calibration:** Cohen's κ = {calibration.kappa:.3f} "
+            f"(threshold {calibration.threshold}) on {calibration.n} items — {status}",
+            "",
+        ]
+    if blocked_reason:
+        lines += [f"> ❌ **Blocked:** {blocked_reason}", ""]
+
+    lines += [
+        f"### Naive (legacy mean-threshold, tol {naive.checks[0].tolerance if naive.checks else '—'}) "
+        f"{'✅' if naive.passed else '❌'}",
+        "| Metric | Champion floor | Candidate | Verdict |",
+        "|---|--:|--:|:--|",
+    ]
+    for c in naive.checks:
+        lines.append(
+            f"| `{c.metric}` | {c.floor:.3f} | {c.candidate:.3f} | "
+            f"{'✅ pass' if c.passed else '❌ fail'} |"
+        )
+    lines += [
+        "",
+        "<sub>Statistical verdict uses the multiplicity-adjusted p-value (CI shown is "
+        "per-comparison); judge metric is informational. The naive verdict is the old "
+        "mean-threshold check, shown to make the difference visible.</sub>",
+    ]
+    return "\n".join(lines)
+
+
 def render_naive_markdown(naive: GateResult, *, tolerance: float) -> str:
     header = "✅ PASS" if naive.passed else "❌ FAIL"
     lines = [

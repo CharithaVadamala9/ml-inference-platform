@@ -90,6 +90,11 @@ def run_calibration(
 def log_kappa_mlflow(kappa: float, *, experiment: str = "mlip-judge-calibration") -> None:
     """Best-effort: log kappa to MLflow so drift is visible over time."""
     try:
+        import os
+
+        # Fail fast instead of hanging on retries if the server is unreachable.
+        os.environ.setdefault("MLFLOW_HTTP_REQUEST_MAX_RETRIES", "1")
+        os.environ.setdefault("MLFLOW_HTTP_REQUEST_TIMEOUT", "3")
         import mlflow
 
         mlflow.set_tracking_uri(settings.mlflow_tracking_uri)

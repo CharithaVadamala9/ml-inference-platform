@@ -30,53 +30,6 @@ def _stat_table(result: StatGateResult) -> list[str]:
     return rows
 
 
-def render_stat_markdown(
-    result: StatGateResult,
-    *,
-    blocked_reason: str | None = None,
-    calibration: CalibrationResult | None = None,
-) -> str:
-    drifted = calibration is not None and not calibration.passed
-    header = "✅ PASS" if (result.passed and not blocked_reason and not drifted) else "❌ FAIL"
-    lines = [
-        f"## 🧪 Eval Quality Gate — {header}",
-        "",
-        (
-            f"Paired on `id`: **{result.matched} matched** · "
-            f"{result.dropped_candidate} candidate-only · {result.dropped_champion} champion-only · "
-            f"{result.content_mismatches} content-mismatch. "
-            f"Correction: **{result.correction_method}** @ α={result.alpha}."
-        ),
-    ]
-    if calibration is not None:
-        status = "✅ ok" if calibration.passed else "❌ DRIFTED — judge no longer trustworthy"
-        lines += [
-            "",
-            f"**Judge calibration:** Cohen's κ = {calibration.kappa:.3f} "
-            f"(threshold {calibration.threshold}) on {calibration.n} gold items — {status}",
-        ]
-    if blocked_reason:
-        lines += ["", f"> ❌ **Blocked:** {blocked_reason}"]
-    if result.dropped_candidate or result.dropped_champion:
-        lines += [
-            "",
-            f"> ⚠️ Question set differs — testing on the {result.matched} shared questions.",
-        ]
-    lines += ["", *_stat_table(result), ""]
-    footnote = (
-        f"<sub>Verdict uses the multiplicity-adjusted p-value (α={result.alpha}); "
-        "the CI shown is per-comparison. The judge metric is informational."
-    )
-    has_categories = any(t.category != "overall" for t in result.tests)
-    if has_categories:
-        footnote += (
-            " Aggregate + per-category tests share one correction family. Per-category n "
-            "is small, so only sizeable subgroup regressions are detectable."
-        )
-    lines.append(footnote + "</sub>")
-    return "\n".join(lines)
-
-
 def render_gate_markdown(
     *,
     stat: StatGateResult,

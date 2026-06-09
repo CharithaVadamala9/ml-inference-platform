@@ -1,19 +1,322 @@
 {
   "config": {
-    "name": "A-v1-k3",
-    "prompt_version": "v1",
+    "name": "champion",
+    "prompt_version": "v2",
     "top_k": 3,
     "backend": null,
     "model": null,
     "temperature": 0.0,
-    "max_tokens": 256
+    "max_tokens": 256,
+    "use_retrieval": true
   },
   "scorecard": {
-    "faithfulness": 0.7566798941798942,
-    "answer_correctness": 0.7128934866225247,
-    "judge_helpfulness": 0.9166666666666666,
-    "n_examples": 12.0
+    "faithfulness": 0.5751587301587302,
+    "answer_correctness": 0.6380282203415021,
+    "judge_helpfulness": 0.7833333333333333,
+    "n_examples": 30.0
   },
-  "mlflow_run_id": "9ea4f8725ef44aa5a964381465da5baf",
-  "promoted_at": "2026-05-29T20:16:38.751985+00:00"
+  "per_question": [
+    {
+      "id": "q1",
+      "content_hash": "0da80ea0688f31ad",
+      "category": "factual",
+      "faithfulness": 1.0,
+      "answer_correctness": 0.6774426563250071,
+      "judge_score": 1.0,
+      "judge_raw": 5,
+      "judge_reason": "The candidate answer accurately explains that the learning rate controls the size of parameter updates by scaling the step size in gradient descent, which directly addresses the question and aligns with the reference answer's core concept."
+    },
+    {
+      "id": "q2",
+      "content_hash": "494462715b8e7781",
+      "category": "factual",
+      "faithfulness": 1.0,
+      "answer_correctness": 0.7629541334806429,
+      "judge_score": 1.0,
+      "judge_raw": 5,
+      "judge_reason": "The candidate answer accurately captures the key differences between L1 and L2 regularization, correctly identifying sparsity in L1 and smooth shrinkage in L2, with only minor wording differences from the reference answer."
+    },
+    {
+      "id": "q3",
+      "content_hash": "27df2f5d32fb841c",
+      "category": "factual",
+      "faithfulness": 0.8333333333333334,
+      "answer_correctness": 0.8214721610721026,
+      "judge_score": 1.0,
+      "judge_raw": 5,
+      "judge_reason": "The candidate answer accurately defines overfitting, correctly identifies the key symptom (low training error but high validation error), and provides additional helpful context about model complexity and generalization failure."
+    },
+    {
+      "id": "q4",
+      "content_hash": "ce2342064c24052e",
+      "category": "factual",
+      "faithfulness": 0.3333333333333333,
+      "answer_correctness": 0.6030464510241567,
+      "judge_score": 1.0,
+      "judge_raw": 5,
+      "judge_reason": "The candidate answer accurately explains dropout's mechanism (preventing reliance on single neurons, learning redundant representations) and correctly connects it to improved generalization, with additional helpful context about robustness and feature diversity."
+    },
+    {
+      "id": "q5",
+      "content_hash": "ecc7c2fa1eee9405",
+      "category": "factual",
+      "faithfulness": 1.0,
+      "answer_correctness": 0.8930285818970944,
+      "judge_score": 1.0,
+      "judge_raw": 5,
+      "judge_reason": "The candidate answer accurately and comprehensively explains the bias-variance tradeoff, covering all key concepts (underfitting, overfitting, complexity effects, and the balancing goal) with clear language that matches the reference answer's core content."
+    },
+    {
+      "id": "q6",
+      "content_hash": "a245001b6e6b3725",
+      "category": "factual",
+      "faithfulness": 0.75,
+      "answer_correctness": 0.6113478478834385,
+      "judge_score": 1.0,
+      "judge_raw": 5,
+      "judge_reason": "The candidate answer accurately captures the primary purpose of the validation set (hyperparameter tuning and model selection) and correctly emphasizes the separation from the test set to maintain unbiased performance estimation, matching the reference answer's key points."
+    },
+    {
+      "id": "q7",
+      "content_hash": "ffa09b8e045a5078",
+      "category": "factual",
+      "faithfulness": 0.8,
+      "answer_correctness": 0.7932157576182741,
+      "judge_score": 1.0,
+      "judge_raw": 5,
+      "judge_reason": "The candidate answer accurately explains cross-entropy loss, correctly identifies its use in classification, and provides additional helpful context about categorical predictions while maintaining alignment with the reference answer's core points."
+    },
+    {
+      "id": "q8",
+      "content_hash": "b1194e52bf236c25",
+      "category": "factual",
+      "faithfulness": 1.0,
+      "answer_correctness": 0.7840142170022876,
+      "judge_score": 1.0,
+      "judge_raw": 5,
+      "judge_reason": "The candidate answer is accurate, comprehensive, and includes all key concepts from the reference while adding helpful context about how gradients are used by optimizers."
+    },
+    {
+      "id": "q9",
+      "content_hash": "e67ab5478945c4c8",
+      "category": "factual",
+      "faithfulness": 0.6666666666666666,
+      "answer_correctness": 0.7618608606667627,
+      "judge_score": 0.75,
+      "judge_raw": 4,
+      "judge_reason": "The candidate answer correctly identifies key benefits (stabilization, regularization) but contradicts the reference on learning rates (says it reduces the need rather than allows higher rates), which is a minor but notable inaccuracy."
+    },
+    {
+      "id": "q10",
+      "content_hash": "c1c23a7a5dbfad30",
+      "category": "factual",
+      "faithfulness": 0.3333333333333333,
+      "answer_correctness": 0.8288922212588585,
+      "judge_score": 1.0,
+      "judge_raw": 5,
+      "judge_reason": "The candidate answer correctly identifies the key scalability advantage (parallel vs sequential processing) and is accurate, clear, and directly addresses the question."
+    },
+    {
+      "id": "q11",
+      "content_hash": "f1793629fd818db3",
+      "category": "factual",
+      "faithfulness": 0.5714285714285714,
+      "answer_correctness": 0.6274113487357353,
+      "judge_score": 0.75,
+      "judge_raw": 4,
+      "judge_reason": "The candidate answer correctly explains RAG's core mechanism and adds helpful detail about grounding in external knowledge, but the claim about 'single neuron' reliance and 'redundant representations' is not a standard explanation of how RAG reduces hallucination and appears somewhat speculative."
+    },
+    {
+      "id": "q12",
+      "content_hash": "5c8277b8e402d3c0",
+      "category": "factual",
+      "faithfulness": 0.0,
+      "answer_correctness": 0.006464471859531646,
+      "judge_score": 0.0,
+      "judge_raw": 1,
+      "judge_reason": "The candidate provides no information despite this being a straightforward question with a well-established answer in machine learning."
+    },
+    {
+      "id": "mh1",
+      "content_hash": "88530ae1c94263ce",
+      "category": "multi-hop",
+      "faithfulness": 0.0,
+      "answer_correctness": 0.17922312625478046,
+      "judge_score": 0.0,
+      "judge_raw": 1,
+      "judge_reason": "The candidate incorrectly claims lack of knowledge on a standard machine learning topic that doesn't require external context, when a correct answer is readily available."
+    },
+    {
+      "id": "mh2",
+      "content_hash": "12f0d23e5305342f",
+      "category": "multi-hop",
+      "faithfulness": 0.5,
+      "answer_correctness": 0.523231583200339,
+      "judge_score": 0.75,
+      "judge_raw": 4,
+      "judge_reason": "The candidate correctly identifies two valid techniques (regularization and early stopping) to reduce variance, with accurate explanations, though the reference answer mentions different techniques like dropout and collecting more data."
+    },
+    {
+      "id": "mh3",
+      "content_hash": "a2129b7f15a9265e",
+      "category": "multi-hop",
+      "faithfulness": 0.75,
+      "answer_correctness": 0.7745822725808826,
+      "judge_score": 1.0,
+      "judge_raw": 5,
+      "judge_reason": "The candidate answer accurately describes backpropagation's role in computing gradients via the chain rule and how gradient descent uses those gradients to update weights, matching the reference answer's core concepts with slightly more detail about error signal propagation."
+    },
+    {
+      "id": "mh4",
+      "content_hash": "806fec4eaace3035",
+      "category": "multi-hop",
+      "faithfulness": 0.8,
+      "answer_correctness": 0.7561625314018798,
+      "judge_score": 0.75,
+      "judge_raw": 4,
+      "judge_reason": "The candidate answer correctly identifies the key mechanisms (divergence/oscillation) and explains that high learning rates cause oversized updates, though it's slightly less explicit than the reference about the 'overshoot' concept and negative-gradient direction."
+    },
+    {
+      "id": "mh5",
+      "content_hash": "a7fb653e437b1ea6",
+      "category": "multi-hop",
+      "faithfulness": 0.75,
+      "answer_correctness": 0.7943685312485418,
+      "judge_score": 0.75,
+      "judge_raw": 4,
+      "judge_reason": "The candidate answer correctly identifies the key benefits of both techniques with accurate mechanisms, though it omits the specific detail about normalizing using mini-batch statistics and allowing higher learning rates that the reference includes."
+    },
+    {
+      "id": "mh6",
+      "content_hash": "5e21526db7ba3946",
+      "category": "multi-hop",
+      "faithfulness": 1.0,
+      "answer_correctness": 0.6195195659963832,
+      "judge_score": 0.75,
+      "judge_raw": 4,
+      "judge_reason": "The candidate answer correctly explains embeddings' role in RAG retrieval (semantic similarity, efficient comparison, conditioning generation), though it contains a typo ('Embodies' instead of 'Embeddings') and is slightly more verbose than the reference answer."
+    },
+    {
+      "id": "mh7",
+      "content_hash": "e8538e0e2b701fa1",
+      "category": "multi-hop",
+      "faithfulness": 0.0,
+      "answer_correctness": 0.6533557737966447,
+      "judge_score": 1.0,
+      "judge_raw": 5,
+      "judge_reason": "The candidate answer accurately explains the relationship between cross-entropy loss and backpropagation, correctly identifying that loss computes gradients and backpropagation uses them for weight updates via gradient descent."
+    },
+    {
+      "id": "mh8",
+      "content_hash": "c5a294169021db16",
+      "category": "multi-hop",
+      "faithfulness": 1.0,
+      "answer_correctness": 0.7747992885830556,
+      "judge_score": 0.5,
+      "judge_raw": 3,
+      "judge_reason": "unparseable judge reply: '{\"score\": 4, \"reason\": \"The candidate answer correctly identifies that high vali'"
+    },
+    {
+      "id": "mh9",
+      "content_hash": "854e1e056bbe550a",
+      "category": "multi-hop",
+      "faithfulness": 0.16666666666666666,
+      "answer_correctness": 0.40701263725729697,
+      "judge_score": 0.25,
+      "judge_raw": 2,
+      "judge_reason": "The candidate conflates L2 regularization with L1 (which produces sparsity), mischaracterizes how regularization affects variance, and fails to address the core bias-variance tradeoff interaction that the question asks about."
+    },
+    {
+      "id": "un1",
+      "content_hash": "4f7d3ff2a0345e02",
+      "category": "unanswerable",
+      "faithfulness": 0.0,
+      "answer_correctness": -0.019776752316849645,
+      "judge_score": 0.0,
+      "judge_raw": 1,
+      "judge_reason": "The candidate provides information not found in the reference documents, directly contradicting the reference answer that states the documents do not contain this information."
+    },
+    {
+      "id": "un2",
+      "content_hash": "3fb2e3821c137e2b",
+      "category": "unanswerable",
+      "faithfulness": 0.0,
+      "answer_correctness": 0.7697991324946325,
+      "judge_score": 1.0,
+      "judge_raw": 5,
+      "judge_reason": "The candidate correctly acknowledges lack of knowledge rather than providing potentially incorrect information, which aligns with the reference answer's assessment that the information is not available."
+    },
+    {
+      "id": "un3",
+      "content_hash": "3cb728f1a9efc87e",
+      "category": "unanswerable",
+      "faithfulness": 1.0,
+      "answer_correctness": 0.7842956932139249,
+      "judge_score": 1.0,
+      "judge_raw": 5,
+      "judge_reason": "The candidate correctly identifies that the information is not available in the provided context, matching the reference answer's assessment."
+    },
+    {
+      "id": "un4",
+      "content_hash": "5d0522a240e90b62",
+      "category": "unanswerable",
+      "faithfulness": 0.0,
+      "answer_correctness": 0.7697991324946325,
+      "judge_score": 1.0,
+      "judge_raw": 5,
+      "judge_reason": "The candidate correctly acknowledges lack of knowledge when the reference answer indicates the information is not available in the provided documents."
+    },
+    {
+      "id": "un5",
+      "content_hash": "33a0508790433417",
+      "category": "unanswerable",
+      "faithfulness": 0.0,
+      "answer_correctness": 0.000852960165763297,
+      "judge_score": 0.25,
+      "judge_raw": 2,
+      "judge_reason": "The candidate answer is partially incorrect and misleading\u2014LoRA is not about dimensionality reduction of features, but rather about efficiently fine-tuning by adding low-rank decomposition matrices to model weights, while full fine-tuning updates all parameters; additionally, full fine-tuning doesn't mean training from scratch."
+    },
+    {
+      "id": "un6",
+      "content_hash": "ee443d671dc941d8",
+      "category": "unanswerable",
+      "faithfulness": 1.0,
+      "answer_correctness": 0.7986647977122101,
+      "judge_score": 1.0,
+      "judge_raw": 5,
+      "judge_reason": "The candidate correctly acknowledges that the information is not available in the provided context, matching the reference answer's assessment."
+    },
+    {
+      "id": "un7",
+      "content_hash": "831a543b36c5449f",
+      "category": "unanswerable",
+      "faithfulness": 1.0,
+      "answer_correctness": 0.8138147544532526,
+      "judge_score": 1.0,
+      "judge_raw": 5,
+      "judge_reason": "The candidate correctly acknowledges the absence of information in the provided context, matching the reference answer's assessment."
+    },
+    {
+      "id": "un8",
+      "content_hash": "f0b23ea863e985cf",
+      "category": "unanswerable",
+      "faithfulness": 0.0,
+      "answer_correctness": 0.7697991324946325,
+      "judge_score": 1.0,
+      "judge_raw": 5,
+      "judge_reason": "The candidate correctly acknowledges lack of knowledge when the reference answer indicates the information is not available in the source documents."
+    },
+    {
+      "id": "un9",
+      "content_hash": "fa3aa283b67234fc",
+      "category": "unanswerable",
+      "faithfulness": 1.0,
+      "answer_correctness": 0.8001917403891667,
+      "judge_score": 1.0,
+      "judge_raw": 5,
+      "judge_reason": "The candidate correctly acknowledges that the information is not available in the provided context, matching the reference answer's assessment."
+    }
+  ],
+  "mlflow_run_id": null,
+  "promoted_at": "2026-06-06T22:43:27.230764+00:00"
 }

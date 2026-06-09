@@ -67,6 +67,68 @@ def test_runner_writes_report(monkeypatch, tmp_path):
     assert len(saved["records"]) == 2
 
 
+def test_per_question_is_built_and_persisted(monkeypatch, tmp_path):
+    # Stub generation + scorers with id-aligned per-item results.
+    monkeypatch.setattr(graph_mod, "RagPipeline", _FakePipeline)
+    monkeypatch.setattr(
+        graph_mod,
+        "load_eval",
+        lambda: [
+            EvalExample(id="q1", question="Q1?", ground_truth="A1", source_ids=[]),
+            EvalExample(id="q2", question="Q2?", ground_truth="A2", source_ids=[]),
+        ],
+    )
+    monkeypatch.setattr(
+        graph_mod,
+        "score_ragas",
+        lambda records: {
+            "faithfulness": 0.85,
+            "answer_correctness": 0.65,
+            "per_item": [
+                {"faithfulness": 0.8, "answer_correctness": 0.7},
+                {"faithfulness": 0.9, "answer_correctness": 0.6},
+            ],
+        },
+    )
+
+    class _FakeJudge:
+        def score(self, records):
+            return {
+                "judge_helpfulness": 0.625,
+                "per_item": [
+                    {"score": 0.75, "raw_score": 4, "reason": "good"},
+                    {"score": 0.5, "raw_score": 3, "reason": "meh"},
+                ],
+            }
+
+    monkeypatch.setattr(graph_mod, "LLMJudge", _FakeJudge)
+    monkeypatch.setattr("mlip.eval.runner.REPORTS_DIR", tmp_path)
+
+    run = run_eval(RagConfig(name="pq"), log_to_mlflow=False)
+
+    # In-memory: per-question is id-keyed with metric scores + judge verdict.
+    pq = run.per_question
+    assert [r["id"] for r in pq] == ["q1", "q2"]
+    assert pq[0]["faithfulness"] == 0.8
+    assert pq[0]["answer_correctness"] == 0.7
+    assert pq[0]["judge_raw"] == 4
+    assert pq[1]["judge_score"] == 0.5
+
+    # content_hash is content-derived (lets the gate verify paired ids match).
+    assert len(pq[0]["content_hash"]) == 16
+    assert pq[0]["content_hash"] != pq[1]["content_hash"]
+
+    # No drift: the aggregate scorecard is consistent with per_question means.
+    assert abs(run.scorecard["faithfulness"] - 0.85) < 1e-9  # mean(0.8, 0.9)
+    assert abs(run.scorecard["answer_correctness"] - 0.65) < 1e-9  # mean(0.7, 0.6)
+    assert abs(run.scorecard["judge_helpfulness"] - 0.625) < 1e-9  # mean(0.75, 0.5)
+
+    # Persisted: the report file carries per_question too (so the gate can read it).
+    saved = json.loads(run.report_path.read_text())
+    assert saved["per_question"][1]["id"] == "q2"
+    assert saved["per_question"][1]["faithfulness"] == 0.9
+
+
 def test_eval_graph_norag_omits_faithfulness(monkeypatch):
     # No-RAG: RAGAS returns no faithfulness, so the scorecard must omit it.
     monkeypatch.setattr(graph_mod, "RagPipeline", _FakePipeline)

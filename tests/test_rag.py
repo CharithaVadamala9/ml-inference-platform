@@ -20,6 +20,15 @@ class _EchoBackend:
         return messages[0]["content"]
 
 
+def test_eval_ids_are_stable_and_unique() -> None:
+    # Paired statistical gating joins champion<->candidate on `id`, so ids must be
+    # stable across runs (dataset labels, not run-scoped) and unique.
+    first = [e.id for e in load_eval()]
+    second = [e.id for e in load_eval()]
+    assert first == second
+    assert len(set(first)) == len(first)
+
+
 def test_corpus_and_eval_load() -> None:
     corpus = load_corpus()
     evalset = load_eval()

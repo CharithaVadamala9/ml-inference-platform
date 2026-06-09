@@ -24,6 +24,12 @@ data/*.tmp
 *.faiss
 chroma/
 
+# Eval judge disk cache
+.cache/
+
+# CI gate verdict comment (generated)
+gate_comment.md
+
 # Eval run outputs (generated artifacts; champion.json is the canonical record)
 reports/*.json
 !reports/.gitkeep

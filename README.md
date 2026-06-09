@@ -25,6 +25,57 @@ for "which model is the champion."
 > 📖 **New here?** Read [docs/HOW_IT_WORKS.md](docs/HOW_IT_WORKS.md) — a plain-English guide
 > to what was built, every tool used, and *why* (Ollama, Anthropic, RAGAS, vLLM, and more).
 
+## The statistical quality gate
+
+The headline of this project is a CI gate that is **statistically honest** instead of a naive
+mean-threshold. For each metric it runs a **paired test on the same questions** between the
+candidate and the stored champion — a seeded **paired bootstrap CI** for continuous metrics and
+**McNemar** for the binary judge metric — then applies a **multiple-comparison correction**
+(Benjamini–Hochberg by default) across every metric × category test. A change fails only when a
+regression is **statistically significant after correction**, not when it dips into the noise.
+
+It also gates on things a metric threshold can't see:
+
+- **🎯 Judge-drift detection (the strongest check).** A small human-labeled gold set measures
+  **Cohen's κ** between the LLM judge and human verdicts. Swap the judge to a weak model and
+  *every quality metric still passes* — but κ collapses and the gate fails. Measured here:
+  healthy Claude-Haiku judge **κ = 0.92**, swapped 1B judge **κ = −0.08** (threshold 0.6).
+  No aggregate threshold can catch a broken judge; this does.
+- **Per-category attribution.** It names the exact `metric × category` that regressed
+  (e.g. `answer_correctness / unanswerable`), not just "the average dropped."
+- **Abstention-aware scoring.** Faithfulness is undefined for "I don't know" answers, so the
+  `unanswerable` bucket is gated on correctness only.
+
+Every PR gets a **sticky comment** showing the naive and statistical verdicts side by side.
+
+### What I tested — and what didn't hold (honest)
+
+I set out to show "naive false-alarms on a quality-neutral change while the statistical gate
+passes." **Running the experiment, that claim did not hold on this 30-question setup** — and
+reporting that is the point:
+
+| Candidate change | faithfulness Δ | correctness Δ | naive (tol 0.03) | statistical |
+|---|--:|--:|:--:|:--:|
+| retrieval `k` 3→2 | −0.005 | −0.025 | PASS | PASS |
+| retrieval `k` 3→1 | +0.073 | −0.026 | PASS | PASS |
+| aggressive brevity | ~0 | −0.10 | FAIL | **FAIL (real regression)** |
+| no-op re-eval | −0.012 | +0.002 | PASS | PASS |
+
+**Why:** on *paired* data, a mean drop large enough to clear naive's threshold also tends to be
+statistically significant — *unless* the change is high-variance, and a high-variance change is a
+*real* regression on the cratered questions (so a statistical "pass" there would be the gate
+being too lenient, not a false alarm). The honest, demonstrable value of the statistical gate is
+therefore: **(1) judge-drift detection, (2) per-category attribution, and (3) stable,
+significance-aware verdicts** under run-to-run noise.
+
+### Known limitation
+
+RAGAS `answer_correctness` intermittently returns `NaN` on some verbose candidate answers (its
+internal statement-extraction step fails to parse them; not cleanly correlated with length). The
+gate degrades gracefully — those questions are dropped from that metric's paired test and the
+per-test `n` is shown — but it reduces power. Fixing it (retry/validate RAGAS extraction or add an
+embedding-similarity fallback) is future work.
+
 ## Architecture
 
 ```mermaid
@@ -130,15 +181,19 @@ Tracked signals: **QPS**, **TTFT** (p50/p95), end-to-end **latency** (p50/p95),
 **cache hit rate**, and output tokens/sec. The serving engine is a swappable
 backend (`ollama` locally, `vllm` on GPU, `openai`) selected by config.
 
-### The quality gate
+### The quality gate (CI)
 
 On every pull request, the [`Quality Gate`](.github/workflows/quality-gate.yml)
-workflow re-evaluates the champion config under the PR's code and **fails the
-check (exit 1) if `faithfulness` or `answer_correctness` regresses** beyond
-tolerance — blocking the merge. It needs an `ANTHROPIC_API_KEY` repository
-secret (RAG generation runs on a local Ollama model in the runner); without the
-secret the live gate skips gracefully. To make a failing gate actually block a
-merge, enable branch protection on `main` and mark the check **Required**.
+workflow re-evaluates the champion config under the PR's code and runs the
+**statistical gate** described [above](#the-statistical-quality-gate): it fails
+(exit 1) on a *significant* regression after multiple-comparison correction, or
+on judge drift (κ below threshold), and posts a sticky comment with the naive
+and statistical verdicts side by side. Use `--naive` to make the legacy
+mean-threshold the binding decision instead. It needs an `ANTHROPIC_API_KEY`
+repository secret (RAG generation runs on a local Ollama model in the runner);
+without the secret the live gate skips gracefully. To make a failing gate
+actually block a merge, enable branch protection on `main` and mark the check
+**Required**.
 
 > The CLI is invoked as `python -m mlip` during development. (An installed
 > `mlip` console script also exists for wheel installs.)

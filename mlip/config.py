@@ -18,8 +18,12 @@ class Settings(BaseSettings):
     # ---- LLM judge / generation provider ----
     openai_api_key: str | None = None
     anthropic_api_key: str | None = None
+    # DEMO: judge swapped to a local 1B model (the regression under test).
     judge_provider: Literal["openai", "anthropic", "ollama"] = "ollama"
     judge_model: str = "llama3.2:1b"
+    # RAGAS faithfulness/correctness scoring LLM. Kept SEPARATE from judge_model so
+    # swapping the judge (e.g. to a local model) can't break RAGAS scoring.
+    ragas_model: str = "claude-haiku-4-5-20251001"
 
     # Embedding model used by the retriever and by RAGAS semantic scoring.
     embed_model: str = "all-MiniLM-L6-v2"

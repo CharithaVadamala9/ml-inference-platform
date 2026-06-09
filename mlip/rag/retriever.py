@@ -44,8 +44,12 @@ class Retriever:
         texts = [d.text for d in self.documents]
         return np.asarray(self._model.encode(texts, normalize_embeddings=True), dtype=np.float32)
 
-    def retrieve(self, query: str, k: int = 3) -> list[Retrieved]:
+    def _similarities(self, query: str) -> np.ndarray:
+        """Cosine similarity of the query against every document (vectors normalized)."""
         q = np.asarray(self._model.encode([query], normalize_embeddings=True), dtype=np.float32)[0]
-        scores = self._matrix @ q  # cosine similarity (vectors are normalized)
+        return self._matrix @ q
+
+    def retrieve(self, query: str, k: int = 3) -> list[Retrieved]:
+        scores = self._similarities(query)
         top = np.argsort(-scores)[:k]
         return [Retrieved(self.documents[i], float(scores[i])) for i in top]

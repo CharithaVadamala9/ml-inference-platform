@@ -26,22 +26,33 @@ Record = dict[str, Any]  # {id, question, answer, contexts: list[str], ground_tr
 # ---- RAGAS reference metrics ------------------------------------------------
 
 
-def _ragas_llm_and_embeddings():
-    """Wrap our Claude judge + local embeddings for RAGAS."""
+def _ragas_chat_model():
+    """The LLM RAGAS uses to score faithfulness/correctness.
+
+    Deliberately uses `settings.ragas_model` (a fixed Anthropic model), NOT
+    `settings.judge_model`: the quality scorer must not be coupled to the judge
+    config, or swapping the judge (e.g. to a local model) would feed an invalid
+    model name to the Anthropic API and NaN every RAGAS score.
+    """
     from langchain_anthropic import ChatAnthropic
-    from langchain_huggingface import HuggingFaceEmbeddings
-    from ragas.embeddings import LangchainEmbeddingsWrapper
-    from ragas.llms import LangchainLLMWrapper
 
     if not settings.anthropic_api_key:
         raise RuntimeError("ANTHROPIC_API_KEY is not set; add it to .env to run RAGAS.")
-
-    llm = ChatAnthropic(
-        model=settings.judge_model,
+    return ChatAnthropic(
+        model=settings.ragas_model,
         api_key=settings.anthropic_api_key,
         temperature=0.0,
         max_tokens=1024,
     )
+
+
+def _ragas_llm_and_embeddings():
+    """Wrap the RAGAS scoring LLM + local embeddings for RAGAS."""
+    from langchain_huggingface import HuggingFaceEmbeddings
+    from ragas.embeddings import LangchainEmbeddingsWrapper
+    from ragas.llms import LangchainLLMWrapper
+
+    llm = _ragas_chat_model()
     embeddings = HuggingFaceEmbeddings(model_name=settings.embed_model)
     return LangchainLLMWrapper(llm), LangchainEmbeddingsWrapper(embeddings)
 

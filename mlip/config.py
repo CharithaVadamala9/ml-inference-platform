@@ -20,6 +20,9 @@ class Settings(BaseSettings):
     anthropic_api_key: str | None = None
     judge_provider: Literal["openai", "anthropic"] = "anthropic"
     judge_model: str = "claude-haiku-4-5-20251001"
+    # RAGAS faithfulness/correctness scoring LLM. Kept SEPARATE from judge_model so
+    # swapping the judge (e.g. to a local model) can't break RAGAS scoring.
+    ragas_model: str = "claude-haiku-4-5-20251001"
 
     # Embedding model used by the retriever and by RAGAS semantic scoring.
     embed_model: str = "all-MiniLM-L6-v2"

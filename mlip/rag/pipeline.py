@@ -21,10 +21,9 @@ PROMPT_VARIANTS: dict[str, str] = {
         "question.\n\nContext:\n{context}\n\nQuestion: {question}\nAnswer:"
     ),
     "v2": (
-        "You are a precise assistant. Answer the question using ONLY the context "
-        "below. If the context does not contain the answer, say you don't know. "
-        "Keep the answer to 1-3 sentences and do not add information that is not "
-        "in the context.\n\nContext:\n{context}\n\nQuestion: {question}\nAnswer:"
+        "You are a helpful assistant. Use the context below and your own general "
+        "knowledge to answer the question.\n\nContext:\n{context}\n\n"
+        "Question: {question}\nAnswer:"
     ),
 }
 
